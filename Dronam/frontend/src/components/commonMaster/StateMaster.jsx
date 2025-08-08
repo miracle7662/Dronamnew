@@ -11,7 +11,6 @@ import {
   Alert,
   Badge,
   InputGroup,
-  Dropdown,
   Pagination
 } from 'react-bootstrap';
 import { 
@@ -19,7 +18,6 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  Filter,
   MapPin,
   Building,
   Flag
@@ -29,7 +27,6 @@ import { useAuthContext } from '@/common/context/useAuthContext';
 
 const StateMaster = () => {
   const { user } = useAuthContext();
-  // State management
   const [states, setStates] = useState([]);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,30 +39,25 @@ const StateMaster = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [stateToDelete, setStateToDelete] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    code: '',
+    state_name: '',
+    state_code: '',
     capital: '',
     country_id: '',
     status: 1,
     created_by_id: null
   });
 
-  // Validation state
   const [errors, setErrors] = useState({});
 
-  // Load data on component mount
   useEffect(() => {
     loadStates();
     loadCountries();
   }, []);
 
-  // Load states from API
   const loadStates = async () => {
     setLoading(true);
     setError('');
-    
     try {
       const response = await axios.get('http://localhost:3001/api/states');
       setStates(response.data);
@@ -76,7 +68,6 @@ const StateMaster = () => {
     }
   };
 
-  // Load countries for dropdown
   const loadCountries = async () => {
     try {
       const response = await axios.get('http://localhost:3001/api/countries');
@@ -86,7 +77,6 @@ const StateMaster = () => {
     }
   };
 
-  // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
@@ -94,8 +84,6 @@ const StateMaster = () => {
       ...prev,
       [name]: val
     }));
-    
-    // Clear validation error for this field
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -104,53 +92,42 @@ const StateMaster = () => {
     }
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = 'State name is required';
+    if (!formData.state_name.trim()) {
+      newErrors.state_name = 'State name is required';
     }
     
-    if (!formData.code.trim()) {
-      newErrors.code = 'State code is required';
-    } else if (formData.code.length !== 2) {
-      newErrors.code = 'State code must be 2 characters';
+    if (!formData.state_code.trim()) {
+      newErrors.state_code = 'State code is required';
+    } else if (formData.state_code.length !== 2) {
+      newErrors.state_code = 'State code must be 2 characters';
     }
     
     if (!formData.country_id) {
       newErrors.country_id = 'Country is required';
     }
     
-    if (formData.capital && formData.capital.length < 2) {
-      newErrors.capital = 'Capital name must be at least 2 characters';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
     
     setLoading(true);
     
     try {
       const userId = user?.id || 1;
       if (editingState) {
-        // Update existing state
-        await axios.put(`http://localhost:3001/api/states/${editingState.id}`, {
+        await axios.put(`http://localhost:3001/api/states/${editingState.state_id}`, {
           ...formData,
           updated_by_id: userId
         });
         await loadStates();
       } else {
-        // Add new state
         const response = await axios.post('http://localhost:3001/api/states', {
           ...formData,
           created_by_id: userId
@@ -159,7 +136,6 @@ const StateMaster = () => {
           setStates(prev => [response.data.state, ...prev]);
         }
       }
-      
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save state');
@@ -168,12 +144,11 @@ const StateMaster = () => {
     }
   };
 
-  // Handle edit
   const handleEdit = (state) => {
     setEditingState(state);
     setFormData({
-      name: state.name,
-      code: state.code,
+      state_name: state.state_name,
+      state_code: state.state_code,
       capital: state.capital || '',
       country_id: state.country_id,
       status: state.status !== undefined ? state.status : 1
@@ -181,17 +156,15 @@ const StateMaster = () => {
     setShowModal(true);
   };
 
-  // Handle delete
   const handleDelete = (state) => {
     setStateToDelete(state);
     setShowDeleteModal(true);
   };
 
-  // Confirm delete
   const confirmDelete = async () => {
     if (stateToDelete) {
       try {
-        await axios.delete(`http://localhost:3001/api/states/${stateToDelete.id}`);
+        await axios.delete(`http://localhost:3001/api/states/${stateToDelete.state_id}`);
         await loadStates();
         setShowDeleteModal(false);
         setStateToDelete(null);
@@ -201,13 +174,12 @@ const StateMaster = () => {
     }
   };
 
-  // Handle modal close
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingState(null);
     setFormData({
-      name: '',
-      code: '',
+      state_name: '',
+      state_code: '',
       capital: '',
       country_id: '',
       status: 1,
@@ -216,15 +188,13 @@ const StateMaster = () => {
     setErrors({});
   };
 
-  // Filter states based on search term
   const filteredStates = states.filter(state =>
-    state.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    state.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    state.state_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    state.state_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (state.capital && state.capital.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (state.country_name && state.country_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentStates = filteredStates.slice(indexOfFirstItem, indexOfLastItem);
@@ -232,7 +202,6 @@ const StateMaster = () => {
 
   return (
     <Container fluid className="py-4">
-      {/* Header */}
       <Row className="mb-4">
         <Col>
           <div className="d-flex justify-content-between align-items-center">
@@ -255,7 +224,6 @@ const StateMaster = () => {
         </Col>
       </Row>
 
-      {/* Search and Filters */}
       <Row className="mb-4">
         <Col md={6}>
           <InputGroup>
@@ -270,29 +238,14 @@ const StateMaster = () => {
             />
           </InputGroup>
         </Col>
-        <Col md={6} className="d-flex justify-content-end">
-          <Dropdown>
-            <Dropdown.Toggle variant="outline-secondary" className="d-flex align-items-center gap-2">
-              <Filter size={16} />
-              Filter
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item>All States</Dropdown.Item>
-              <Dropdown.Item>Active Only</Dropdown.Item>
-              <Dropdown.Item>Inactive Only</Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-        </Col>
       </Row>
 
-      {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError('')}>
           {error}
         </Alert>
       )}
 
-      {/* States Table */}
       <Card>
         <Card.Body className="p-0">
           {loading ? (
@@ -313,25 +266,24 @@ const StateMaster = () => {
                       <th style={{ minWidth: '150px' }}>Capital</th>
                       <th style={{ minWidth: '150px' }}>Country</th>
                       <th style={{ minWidth: '100px' }}>Status</th>
-                      <th style={{ minWidth: '120px' }}>Created</th>
                       <th style={{ minWidth: '120px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentStates.map((state, index) => (
-                      <tr key={state.id}>
+                      <tr key={state.state_id}>
                         <td>{indexOfFirstItem + index + 1}</td>
                         <td>
                           <div className="d-flex align-items-center">
                             <div className="me-2">
                               <Building size={16} className="text-muted" />
                             </div>
-                            <strong>{state.name}</strong>
+                            <strong>{state.state_name}</strong>
                           </div>
                         </td>
                         <td>
                           <Badge bg="info" className="text-uppercase">
-                            {state.code}
+                            {state.state_code}
                           </Badge>
                         </td>
                         <td>
@@ -359,12 +311,6 @@ const StateMaster = () => {
                             {state.status === 1 ? 'Active' : 'Inactive'}
                           </Badge>
                         </td>
-                        <>
-                        <td>
-                          <small className="text-muted">
-                            {new Date(state.created_at).toLocaleDateString()}
-                          </small>
-                        </td>
                         <td>
                           <div className="d-flex gap-1">
                             <Button
@@ -385,7 +331,6 @@ const StateMaster = () => {
                             </Button>
                           </div>
                         </td>
-                      </>
                       </tr>
                     ))}
                   </tbody>
@@ -459,14 +404,14 @@ const StateMaster = () => {
                   <Form.Label>State Name *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="name"
-                    value={formData.name}
+                    name="state_name"
+                    value={formData.state_name}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.name}
+                    isInvalid={!!errors.state_name}
                     placeholder="Enter state name"
                   />
                   <Form.Control.Feedback type="invalid">
-                    {errors.name}
+                    {errors.state_name}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
@@ -475,15 +420,15 @@ const StateMaster = () => {
                   <Form.Label>State Code *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="code"
-                    value={formData.code}
+                    name="state_code"
+                    value={formData.state_code}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.code}
+                    isInvalid={!!errors.state_code}
                     placeholder="e.g., CA, NY"
                     maxLength={2}
                   />
                   <Form.Control.Feedback type="invalid">
-                    {errors.code}
+                    {errors.state_code}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
@@ -516,8 +461,8 @@ const StateMaster = () => {
                   >
                     <option value="">Select Country</option>
                     {countries.map(country => (
-                      <option key={country.id} value={country.id}>
-                        {country.name}
+                      <option key={country.country_id} value={country.country_id}>
+                        {country.country_name}
                       </option>
                     ))}
                   </Form.Select>
@@ -564,7 +509,7 @@ const StateMaster = () => {
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete <strong>{stateToDelete?.name}</strong>?
+          Are you sure you want to delete <strong>{stateToDelete?.state_name}</strong>?
           This action cannot be undone.
         </Modal.Body>
         <Modal.Footer>
@@ -581,163 +526,3 @@ const StateMaster = () => {
 };
 
 export default StateMaster;
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Row className="mt-4">
-          <Col className="d-flex justify-content-center">
-            <Pagination>
-              <Pagination.First 
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              />
-              <Pagination.Prev 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              />
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Pagination.Item
-                  key={page}
-                  active={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Pagination.Item>
-              ))}
-              
-              <Pagination.Next 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              />
-              <Pagination.Last 
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              />
-            </Pagination>
-          </Col>
-        </Row>
-      )}
-
-      {/* Add/Edit Modal */}
-      <Modal show={showModal} onHide={handleCloseModal} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {editingState ? 'Edit State' : 'Add New State'}
-          </Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSubmit}>
-          <Modal.Body>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>State Name *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.name}
-                    placeholder="Enter state name"
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.name}
-                  </Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>State Code *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="code"
-                    value={formData.code}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.code}
-                    placeholder="e.g., CA, NY"
-                    maxLength={2}
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.code}
-                  </Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Capital City</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="capital"
-                    value={formData.capital}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.capital}
-                    placeholder="Enter capital city"
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.capital}
-                  </Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Country *</Form.Label>
-                  <Form.Select
-                    name="country_id"
-                    value={formData.country_id}
-                    onChange={handleInputChange}
-                    isInvalid={!!errors.country_id}
-                  >
-                    <option value="">Select Country</option>
-                    {countries.map(country => (
-                      <option key={country.id} value={country.id}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Control.Feedback type="invalid">
-                    {errors.country_id}
-                  </Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
-              Cancel
-            </Button>
-            <Button 
-              variant="primary" 
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : (editingState ? 'Update' : 'Save')}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete <strong>{stateToDelete?.name}</strong>?
-          This action cannot be undone.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={confirmDelete}>
-            Delete
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </Container>
-  );
-};
-
-export default StateMaster; 
