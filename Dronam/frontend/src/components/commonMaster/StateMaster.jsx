@@ -25,8 +25,10 @@ import {
   Flag
 } from 'lucide-react';
 import axios from 'axios';
+import { useAuthContext } from '@/common/context/useAuthContext';
 
 const StateMaster = () => {
+  const { user } = useAuthContext();
   // State management
   const [states, setStates] = useState([]);
   const [countries, setCountries] = useState([]);
@@ -45,7 +47,9 @@ const StateMaster = () => {
     name: '',
     code: '',
     capital: '',
-    country_id: ''
+    country_id: '',
+    status: 1,
+    created_by_id: null
   });
 
   // Validation state
@@ -64,12 +68,9 @@ const StateMaster = () => {
     
     try {
       const response = await axios.get('http://localhost:3001/api/states');
-      console.log('Loaded states:', response.data);
-      console.log('Number of states:', response.data.length);
       setStates(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load states');
-      console.error('Error loading states:', err);
     } finally {
       setLoading(false);
     }
@@ -87,10 +88,11 @@ const StateMaster = () => {
 
   // Handle form input changes
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: val
     }));
     
     // Clear validation error for this field
@@ -139,17 +141,20 @@ const StateMaster = () => {
     setLoading(true);
     
     try {
+      const userId = user?.id || 1;
       if (editingState) {
         // Update existing state
-        await axios.put(`http://localhost:3001/api/states/${editingState.id}`, formData);
-        // Reload states to get updated data
+        await axios.put(`http://localhost:3001/api/states/${editingState.id}`, {
+          ...formData,
+          updated_by_id: userId
+        });
         await loadStates();
       } else {
         // Add new state
-        const response = await axios.post('http://localhost:3001/api/states', formData);
-        console.log('New state added:', response.data);
-        
-        // Add the new state to the list immediately
+        const response = await axios.post('http://localhost:3001/api/states', {
+          ...formData,
+          created_by_id: userId
+        });
         if (response.data.state) {
           setStates(prev => [response.data.state, ...prev]);
         }
@@ -158,7 +163,6 @@ const StateMaster = () => {
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save state');
-      console.error('Error saving state:', err);
     } finally {
       setLoading(false);
     }
@@ -171,7 +175,8 @@ const StateMaster = () => {
       name: state.name,
       code: state.code,
       capital: state.capital || '',
-      country_id: state.country_id
+      country_id: state.country_id,
+      status: state.status !== undefined ? state.status : 1
     });
     setShowModal(true);
   };
@@ -187,13 +192,11 @@ const StateMaster = () => {
     if (stateToDelete) {
       try {
         await axios.delete(`http://localhost:3001/api/states/${stateToDelete.id}`);
-        // Reload states to get updated data
         await loadStates();
         setShowDeleteModal(false);
         setStateToDelete(null);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete state');
-        console.error('Error deleting state:', err);
       }
     }
   };
@@ -206,7 +209,9 @@ const StateMaster = () => {
       name: '',
       code: '',
       capital: '',
-      country_id: ''
+      country_id: '',
+      status: 1,
+      created_by_id: null
     });
     setErrors({});
   };
@@ -354,6 +359,7 @@ const StateMaster = () => {
                             {state.status === 1 ? 'Active' : 'Inactive'}
                           </Badge>
                         </td>
+                        <>
                         <td>
                           <small className="text-muted">
                             {new Date(state.created_at).toLocaleDateString()}
@@ -379,6 +385,7 @@ const StateMaster = () => {
                             </Button>
                           </div>
                         </td>
+                      </>
                       </tr>
                     ))}
                   </tbody>
@@ -399,6 +406,181 @@ const StateMaster = () => {
           )}
         </Card.Body>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Row className="mt-4">
+          <Col className="d-flex justify-content-center">
+            <Pagination>
+              <Pagination.First 
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              />
+              <Pagination.Prev 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              />
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <Pagination.Item
+                  key={page}
+                  active={page === currentPage}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Pagination.Item>
+              ))}
+              
+              <Pagination.Next 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              />
+              <Pagination.Last 
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              />
+            </Pagination>
+          </Col>
+        </Row>
+      )}
+
+      {/* Add/Edit Modal */}
+      <Modal show={showModal} onHide={handleCloseModal} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {editingState ? 'Edit State' : 'Add New State'}
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSubmit}>
+          <Modal.Body>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>State Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.name}
+                    placeholder="Enter state name"
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.name}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>State Code *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="code"
+                    value={formData.code}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.code}
+                    placeholder="e.g., CA, NY"
+                    maxLength={2}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.code}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Capital City</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="capital"
+                    value={formData.capital}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.capital}
+                    placeholder="Enter capital city"
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.capital}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Country *</Form.Label>
+                  <Form.Select
+                    name="country_id"
+                    value={formData.country_id}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.country_id}
+                  >
+                    <option value="">Select Country</option>
+                    {countries.map(country => (
+                      <option key={country.id} value={country.id}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">
+                    {errors.country_id}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value={1}>Active</option>
+                    <option value={0}>Inactive</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : (editingState ? 'Update' : 'Save')}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete <strong>{stateToDelete?.name}</strong>?
+          This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmDelete}>
+            Delete
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
+  );
+};
+
+export default StateMaster;
 
       {/* Pagination */}
       {totalPages > 1 && (
