@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { AuthProvider } from '@/common/context/AuthContext'
 
 import App from './App'
 
@@ -8,7 +9,9 @@ if (container) {
   const root = createRoot(container)
   root.render(
     <BrowserRouter basename={''}>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </BrowserRouter>,
   )
 }

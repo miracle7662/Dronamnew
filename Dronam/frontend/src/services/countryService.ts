@@ -1,51 +1,33 @@
-import { apiService } from './apiService';
-import { API_ENDPOINTS } from '../config/api';
+import axios from 'axios';
 
-export interface Country {
-  id: number;
-  name: string;
-  code: string;
-  capital?: string;
-  status: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CreateCountryData {
-  name: string;
-  code: string;
-  capital?: string;
-}
-
-export interface UpdateCountryData {
-  name: string;
-  code: string;
-  capital?: string;
-}
+const API_BASE_URL = '/api/countries';
 
 export const countryService = {
-  // Get all countries
-  getAll: async (): Promise<Country[]> => {
-    return apiService.get<Country[]>(API_ENDPOINTS.COUNTRIES.GET_ALL);
+  getAll: async () => {
+    console.log('countryService.getAll called');
+    const response = await axios.get(API_BASE_URL);
+    console.log('countryService.getAll response:', response);
+    return response.data;
   },
 
-  // Get country by ID
-  getById: async (id: string): Promise<Country> => {
-    return apiService.get<Country>(API_ENDPOINTS.COUNTRIES.GET_BY_ID(id));
+  create: async (countryData: any) => {
+    console.log('countryService.create called with:', countryData);
+    const response = await axios.post(API_BASE_URL, countryData);
+    console.log('countryService.create response:', response);
+    return response.data;
   },
 
-  // Create new country
-  create: async (data: CreateCountryData): Promise<Country> => {
-    return apiService.post<Country>(API_ENDPOINTS.COUNTRIES.CREATE, data);
+  update: async (id: number, countryData: any) => {
+    console.log('countryService.update called with id:', id, 'data:', countryData);
+    const response = await axios.put(API_BASE_URL + '/' + id, countryData);
+    console.log('countryService.update response:', response);
+    return response.data;
   },
 
-  // Update country
-  update: async (id: string, data: UpdateCountryData): Promise<{ message: string }> => {
-    return apiService.put<{ message: string }>(API_ENDPOINTS.COUNTRIES.UPDATE(id), data);
-  },
-
-  // Delete country
-  delete: async (id: string): Promise<{ message: string }> => {
-    return apiService.delete<{ message: string }>(API_ENDPOINTS.COUNTRIES.DELETE(id));
-  },
+  delete: async (id: number) => {
+    console.log('countryService.delete called with id:', id);
+    const response = await axios.delete(API_BASE_URL + '/' + id);
+    console.log('countryService.delete response:', response);
+    return response.data;
+  }
 };
