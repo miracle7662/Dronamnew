@@ -1,10 +1,31 @@
 const { db } = require('../config/database');
 
+// Country table structure:
+// country_id (INTEGER, PRIMARY KEY AUTOINCREMENT)
+// country_name (TEXT, NOT NULL)
+// country_code (TEXT, NOT NULL, UNIQUE)
+// capital (TEXT)
+// status (INTEGER, DEFAULT 1)
+// created_by_id (INTEGER)
+// created_date (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+// updated_by_id (INTEGER)
+// updated_date (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+
 // Get all countries
 const getAllCountries = (req, res) => {
   try {
     const countries = db.prepare(`
-      SELECT * FROM countries 
+      SELECT 
+        country_id,
+        country_name,
+        country_code,
+        capital,
+        status,
+        created_by_id,
+        created_date,
+        updated_by_id,
+        updated_date
+      FROM countries 
       WHERE status = 1 
       ORDER BY country_name
     `).all();

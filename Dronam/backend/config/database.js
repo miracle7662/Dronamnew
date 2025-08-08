@@ -1,8 +1,8 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbPath = path.join('D:', 'lodgingdb', 'lodging.db');
-
+//const dbPath = path.join('D:', 'lodgingdb', 'lodging.db');
+const dbPath = path.join('E:', 'ReactHotelData', 'dronam.db');
 // Create database connection
 const db = new Database(dbPath);
 
@@ -121,35 +121,45 @@ const initDatabase = () => {
 
       /* Create hotels table */
       CREATE TABLE IF NOT EXISTS hotels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        name TEXT NOT NULL,
+        hotelid INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT,
+        password TEXT,
         hotel_name TEXT,
-        phone TEXT,
+        hotel_type TEXT,
         address TEXT,
+        phone TEXT,
         country_id INTEGER,
         state_id INTEGER,
         district_id INTEGER,
         zone_id INTEGER,
-        status INTEGER DEFAULT 1,
-        created_by INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (created_by) REFERENCES agents (id),
-        FOREIGN KEY (country_id) REFERENCES countries (country_id),
-        FOREIGN KEY (state_id) REFERENCES states (state_id),
-        FOREIGN KEY (district_id) REFERENCES districts (district_id),
-        FOREIGN KEY (zone_id) REFERENCES zones (zone_id)
+        gst_no TEXT,
+        pan_no TEXT,
+        aadhar_no TEXT,
+        owner_name TEXT,
+        owner_mobile TEXT,
+        hotel_timeMorning TEXT,
+        hotel_timeEvening TEXT,
+        status INTEGER,
+        created_by_id INTEGER,
+        created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by_id INTEGER,
+        updated_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        masteruserid INTEGER,
+        FOREIGN KEY (created_by_id) REFERENCES agents(id),
+        FOREIGN KEY (country_id) REFERENCES countries(country_id),
+        FOREIGN KEY (state_id) REFERENCES states(state_id),
+        FOREIGN KEY (district_id) REFERENCES districts(district_id),
+        FOREIGN KEY (zone_id) REFERENCES zones(zone_id)
       );
     `;
-    console.log('Executing SQL:', sql); // Debug: Log the SQL
+    console.log('Executing SQL...'); // Debug: Log the SQL
     db.exec(sql);
 
     console.log('✅ Master tables and user tables created successfully!');
     console.log(`Database file: ${dbPath}`);
   } catch (error) {
     console.error('❌ Error creating master tables:', error);
+    throw error; // Re-throw to see full error details
   }
 };
 
