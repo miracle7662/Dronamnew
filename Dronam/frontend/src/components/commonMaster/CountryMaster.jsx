@@ -42,8 +42,8 @@ const CountryMaster = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    code: '',
+    country_name: '',
+    country_code: '',
     capital: '',
     status: 1
   });
@@ -76,17 +76,17 @@ const CountryMaster = () => {
 
   // Handle form input changes
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { country_name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [country_name]: value
     }));
     
     // Clear validation error for this field
-    if (errors[name]) {
+    if (errors[country_name]) {
       setErrors(prev => ({
         ...prev,
-        [name]: ''
+        [country_name]: ''
       }));
     }
   };
@@ -95,14 +95,14 @@ const CountryMaster = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = 'Country name is required';
+    if (!formData.country_name.trim()) {
+      newErrors.country_name = 'Country name is required';
     }
     
-    if (!formData.code.trim()) {
-      newErrors.code = 'Country code is required';
-    } else if (formData.code.length !== 2) {
-      newErrors.code = 'Country code must be 2 characters';
+    if (!formData.country_code.trim()) {
+      newErrors.country_code = 'Country code is required';
+    } else if (formData.country_code.length !== 2) {
+      newErrors.country_code = 'Country code must be 2 characters';
     }
     
     if (formData.capital && formData.capital.length < 2) {
@@ -126,7 +126,7 @@ const CountryMaster = () => {
     try {
       if (editingCountry) {
         // Update existing country
-        await axios.put(`http://localhost:3001/api/countries/${editingCountry.id}`, formData);
+        await axios.put(`http://localhost:3001/api/countries/${editingCountry.country_id}`, formData);
         // Reload countries to get updated data
         await loadCountries();
       } else {
@@ -153,8 +153,8 @@ const CountryMaster = () => {
   const handleEdit = (country) => {
     setEditingCountry(country);
     setFormData({
-      name: country.name,
-      code: country.code,
+      nacountry_name: country.country_name,
+      country_code: country.country_code,
       capital: country.capital || '',
       status: country.status
     });
@@ -171,7 +171,7 @@ const CountryMaster = () => {
   const confirmDelete = async () => {
     if (countryToDelete) {
       try {
-        await axios.delete(`http://localhost:3001/api/countries/${countryToDelete.id}`);
+        await axios.delete(`http://localhost:3001/api/countries/${countryToDelete.country_id}`);
         // Reload countries to get updated data
         await loadCountries();
         setShowDeleteModal(false);
@@ -188,8 +188,8 @@ const CountryMaster = () => {
     setShowModal(false);
     setEditingCountry(null);
     setFormData({
-      name: '',
-      code: '',
+      country_name: '',
+      country_code: '',
       capital: '',
       status: 1
     });
@@ -198,8 +198,8 @@ const CountryMaster = () => {
 
   // Filter countries based on search term
   const filteredCountries = countries.filter(country =>
-    country.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    country.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    country.country_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    country.country_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (country.capital && country.capital.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -304,12 +304,12 @@ const CountryMaster = () => {
                             <div className="me-2">
                               <Building size={16} className="text-muted" />
                             </div>
-                            <strong>{country.name}</strong>
+                            <strong>{country.country_name}</strong>
                           </div>
                         </td>
                         <td>
                           <Badge bg="info" className="text-uppercase">
-                            {country.code}
+                            {country.country_code}
                           </Badge>
                         </td>
                         <td>
@@ -329,7 +329,7 @@ const CountryMaster = () => {
                         </td>
                         <td>
                           <small className="text-muted">
-                            {new Date(country.created_at).toLocaleDateString()}
+                            {new Date(country.created_date).toLocaleDateString()}
                           </small>
                         </td>
                         <td>
@@ -425,10 +425,10 @@ const CountryMaster = () => {
                   <Form.Label>Country Name *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="name"
-                    value={formData.name}
+                    name="country_name"
+                    value={formData.country_name}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.name}
+                    isInvalid={!!errors.country_name}
                     placeholder="Enter country name"
                   />
                   <Form.Control.Feedback type="invalid">
@@ -441,10 +441,10 @@ const CountryMaster = () => {
                   <Form.Label>Country Code *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="code"
-                    value={formData.code}
+                    name="country_code"
+                    value={formData.country_code}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.code}
+                    isInvalid={!!errors.country_code}
                     placeholder="e.g., IN, US"
                     maxLength={2}
                   />
@@ -507,7 +507,7 @@ const CountryMaster = () => {
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete <strong>{countryToDelete?.name}</strong>?
+          Are you sure you want to delete <strong>{countryToDelete?.country_name}</strong>?
           This action cannot be undone.
         </Modal.Body>
         <Modal.Footer>

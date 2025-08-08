@@ -1,30 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getAllStates,
-  getStatesByCountry,
-  getStateById,
-  createState,
-  updateState,
-  deleteState
-} = require('../controllers/stateController');
+const statesController = require('../controllers/stateController'); // Fixed the import name
 
-// GET all states
-router.get('/', getAllStates);
+// Get all states
+router.get('/', statesController.getAllStates);
 
-// GET states by country
-router.get('/country/:countryId', getStatesByCountry);
+// Get states by country
+router.get('/country/:countryId', statesController.getStatesByCountry);
 
-// GET single state by ID
-router.get('/:id', getStateById);
+// Get single state
+router.get('/:id', statesController.getStateById);
 
-// POST create new state
-router.post('/', createState);
+// Create new state
+router.post('/', statesController.createState);
 
-// PUT update state
-router.put('/:id', updateState);
+// Update state
+router.put('/:id', statesController.updateState);
 
-// DELETE state
-router.delete('/:id', deleteState);
+// Delete state
+router.delete('/:id', statesController.deleteState);
 
 module.exports = router;

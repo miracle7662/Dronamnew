@@ -4,11 +4,11 @@ const { db } = require('../config/database');
 const getAllStates = (req, res) => {
   try {
     const states = db.prepare(`
-      SELECT s.*, c.name as country_name 
+      SELECT s.*, c.country_name as country_name 
       FROM states s 
-      LEFT JOIN countries c ON s.country_id = c.id 
+      LEFT JOIN countries c ON s.country_id = c.country_id 
       WHERE s.status = 1 
-      ORDER BY s.name
+      ORDER BY s.state_name
     `).all();
     res.json(states);
   } catch (error) {
@@ -22,7 +22,7 @@ const getStatesByCountry = (req, res) => {
     const states = db.prepare(`
       SELECT * FROM states 
       WHERE country_id = ? AND status = 1 
-      ORDER BY name
+      ORDER BY state_name
     `).all(req.params.countryId);
     res.json(states);
   } catch (error) {
@@ -34,10 +34,10 @@ const getStatesByCountry = (req, res) => {
 const getStateById = (req, res) => {
   try {
     const state = db.prepare(`
-      SELECT s.*, c.name as country_name 
+      SELECT s.*, c.country_name as country_name 
       FROM states s 
-      LEFT JOIN countries c ON s.country_id = c.id 
-      WHERE s.id = ? AND s.status = 1
+      LEFT JOIN countries c ON s.country_id = c.country_id 
+      WHERE s.state_id = ? AND s.status = 1
     `).get(req.params.id);
     
     if (state) {
@@ -52,22 +52,26 @@ const getStateById = (req, res) => {
 
 // Create new state
 const createState = (req, res) => {
-  const { name, code, capital, country_id } = req.body;
+  const { state_name, state_code, capital, country_id, created_by_id } = req.body;
   
-  if (!name || !code || !country_id) {
-    return res.status(400).json({ error: 'Name, code, and country_id are required' });
+  if (!state_name || !state_code || !country_id) {
+    return res.status(400).json({ error: 'State name, code, and country_id are required' });
   }
 
   try {
-    const stmt = db.prepare('INSERT INTO states (name, code, capital, country_id) VALUES (?, ?, ?, ?)');
-    const result = stmt.run(name, code, capital, country_id);
+    const stmt = db.prepare(`
+      INSERT INTO states 
+      (state_name, state_code, capital, country_id, created_by_id) 
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(state_name, state_code, capital, country_id, created_by_id);
     
     // Get the newly created state with all fields
     const newState = db.prepare(`
-      SELECT s.*, c.name as country_name 
+      SELECT s.*, c.country_name as country_name 
       FROM states s 
-      LEFT JOIN countries c ON s.country_id = c.id 
-      WHERE s.id = ?
+      LEFT JOIN countries c ON s.country_id = c.country_id 
+      WHERE s.state_id = ?
     `).get(result.lastInsertRowid);
     
     res.status(201).json({
@@ -81,16 +85,21 @@ const createState = (req, res) => {
 
 // Update state
 const updateState = (req, res) => {
-  const { name, code, capital, country_id } = req.body;
+  const { state_name, state_code, capital, country_id, updated_by_id } = req.body;
   const { id } = req.params;
 
-  if (!name || !code || !country_id) {
-    return res.status(400).json({ error: 'Name, code, and country_id are required' });
+  if (!state_name || !state_code || !country_id) {
+    return res.status(400).json({ error: 'State name, code, and country_id are required' });
   }
 
   try {
-    const stmt = db.prepare('UPDATE states SET name = ?, code = ?, capital = ?, country_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    const result = stmt.run(name, code, capital, country_id, id);
+    const stmt = db.prepare(`
+      UPDATE states 
+      SET state_name = ?, state_code = ?, capital = ?, country_id = ?, 
+          updated_by_id = ?, updated_date = CURRENT_TIMESTAMP 
+      WHERE state_id = ?
+    `);
+    const result = stmt.run(state_name, state_code, capital, country_id, updated_by_id, id);
     
     if (result.changes > 0) {
       res.json({ message: 'State updated successfully!' });
@@ -105,7 +114,11 @@ const updateState = (req, res) => {
 // Delete state (soft delete)
 const deleteState = (req, res) => {
   try {
-    const stmt = db.prepare('UPDATE states SET status = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    const stmt = db.prepare(`
+      UPDATE states 
+      SET status = 0, updated_date = CURRENT_TIMESTAMP 
+      WHERE state_id = ?
+    `);
     const result = stmt.run(req.params.id);
     
     if (result.changes > 0) {

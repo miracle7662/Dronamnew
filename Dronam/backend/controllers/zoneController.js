@@ -4,13 +4,12 @@ const { db } = require('../config/database');
 const getAllZones = (req, res) => {
   try {
     const zones = db.prepare(`
-      SELECT z.*, d.name as district_name, s.name as state_name, c.name as country_name 
-      FROM zones z 
-      LEFT JOIN districts d ON z.district_id = d.id 
-      LEFT JOIN states s ON d.state_id = s.id 
-      LEFT JOIN countries c ON s.country_id = c.id 
-      WHERE z.status = 1 
-      ORDER BY z.name
+      SELECT z.*, d.district_name as district_name, s.state_name as state_name
+      FROM zones z
+      LEFT JOIN districts d ON z.district_id = d.district_id
+      LEFT JOIN states s ON d.state_id = s.state_id
+      WHERE z.status = 1
+      ORDER BY z.zone_name
     `).all();
     res.json(zones);
   } catch (error) {
@@ -22,11 +21,11 @@ const getAllZones = (req, res) => {
 const getZonesByDistrict = (req, res) => {
   try {
     const zones = db.prepare(`
-      SELECT z.*, d.name as district_name 
-      FROM zones z 
-      LEFT JOIN districts d ON z.district_id = d.id 
-      WHERE z.district_id = ? AND z.status = 1 
-      ORDER BY z.name
+      SELECT z.*, d.district_name as district_name
+      FROM zones z
+      LEFT JOIN districts d ON z.district_id = d.district_id
+      WHERE z.district_id = ? AND z.status = 1
+      ORDER BY z.zone_name
     `).all(req.params.districtId);
     res.json(zones);
   } catch (error) {
@@ -38,12 +37,11 @@ const getZonesByDistrict = (req, res) => {
 const getZoneById = (req, res) => {
   try {
     const zone = db.prepare(`
-      SELECT z.*, d.name as district_name, s.name as state_name, c.name as country_name 
-      FROM zones z 
-      LEFT JOIN districts d ON z.district_id = d.id 
-      LEFT JOIN states s ON d.state_id = s.id 
-      LEFT JOIN countries c ON s.country_id = c.id 
-      WHERE z.id = ? AND z.status = 1
+      SELECT z.*, d.district_name as district_name, s.state_name as state_name
+      FROM zones z
+      LEFT JOIN districts d ON z.district_id = d.district_id
+      LEFT JOIN states s ON d.state_id = s.state_id
+      WHERE z.zone_id = ? AND z.status = 1
     `).get(req.params.id);
     
     if (zone) {
@@ -58,24 +56,27 @@ const getZoneById = (req, res) => {
 
 // Create new zone
 const createZone = (req, res) => {
-  const { name, code, district_id, description } = req.body;
+  const { zone_name, zone_code, district_id, description, created_by_id } = req.body;
   
-  if (!name || !code || !district_id) {
-    return res.status(400).json({ error: 'Name, code, and district_id are required' });
+  if (!zone_name || !zone_code || !district_id) {
+    return res.status(400).json({ error: 'Zone name, code, and district_id are required' });
   }
 
   try {
-    const stmt = db.prepare('INSERT INTO zones (name, code, district_id, description) VALUES (?, ?, ?, ?)');
-    const result = stmt.run(name, code, district_id, description);
+    const stmt = db.prepare(`
+      INSERT INTO zones 
+      (zone_name, zone_code, district_id, description, created_by_id) 
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(zone_name, zone_code, district_id, description, created_by_id);
     
     // Get the newly created zone with all fields
     const newZone = db.prepare(`
-      SELECT z.*, d.name as district_name, s.name as state_name, c.name as country_name 
-      FROM zones z 
-      LEFT JOIN districts d ON z.district_id = d.id 
-      LEFT JOIN states s ON d.state_id = s.id 
-      LEFT JOIN countries c ON s.country_id = c.id 
-      WHERE z.id = ?
+      SELECT z.*, d.district_name as district_name, s.state_name as state_name
+      FROM zones z
+      LEFT JOIN districts d ON z.district_id = d.district_id
+      LEFT JOIN states s ON d.state_id = s.state_id
+      WHERE z.zone_id = ?
     `).get(result.lastInsertRowid);
     
     res.status(201).json({
@@ -89,16 +90,21 @@ const createZone = (req, res) => {
 
 // Update zone
 const updateZone = (req, res) => {
-  const { name, code, district_id, description } = req.body;
+  const { zone_name, zone_code, district_id, description, updated_by_id } = req.body;
   const { id } = req.params;
 
-  if (!name || !code || !district_id) {
-    return res.status(400).json({ error: 'Name, code, and district_id are required' });
+  if (!zone_name || !zone_code || !district_id) {
+    return res.status(400).json({ error: 'Zone name, code, and district_id are required' });
   }
 
   try {
-    const stmt = db.prepare('UPDATE zones SET name = ?, code = ?, district_id = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    const result = stmt.run(name, code, district_id, description, id);
+    const stmt = db.prepare(`
+      UPDATE zones 
+      SET zone_name = ?, zone_code = ?, district_id = ?, description = ?, 
+          updated_by_id = ?, updated_date = CURRENT_TIMESTAMP 
+      WHERE zone_id = ?
+    `);
+    const result = stmt.run(zone_name, zone_code, district_id, description, updated_by_id, id);
     
     if (result.changes > 0) {
       res.json({ message: 'Zone updated successfully!' });
@@ -113,7 +119,11 @@ const updateZone = (req, res) => {
 // Delete zone (soft delete)
 const deleteZone = (req, res) => {
   try {
-    const stmt = db.prepare('UPDATE zones SET status = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    const stmt = db.prepare(`
+      UPDATE zones 
+      SET status = 0, updated_date = CURRENT_TIMESTAMP 
+      WHERE zone_id = ?
+    `);
     const result = stmt.run(req.params.id);
     
     if (result.changes > 0) {

@@ -1,30 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getAllDistricts,
-  getDistrictsByState,
-  getDistrictById,
-  createDistrict,
-  updateDistrict,
-  deleteDistrict
-} = require('../controllers/districtController');
+const districtsController = require('../controllers/districtController');
 
-// GET all districts
-router.get('/', getAllDistricts);
+// Get all districts
+router.get('/', districtsController.getAllDistricts);
 
-// GET districts by state
-router.get('/by-state/:stateId', getDistrictsByState);
+// Get districts by state
+router.get('/state/:stateId', districtsController.getDistrictsByState);
 
-// GET single district by ID
-router.get('/:id', getDistrictById);
+// Get single district
+router.get('/:id', districtsController.getDistrictById);
 
-// POST create new district
-router.post('/', createDistrict);
+// Create new district
+router.post('/', districtsController.createDistrict);
 
-// PUT update district
-router.put('/:id', updateDistrict);
+// Update district
+router.put('/:id', districtsController.updateDistrict);
 
-// DELETE district
-router.delete('/:id', deleteDistrict);
+// Delete district
+router.delete('/:id', districtsController.deleteDistrict);
 
 module.exports = router;

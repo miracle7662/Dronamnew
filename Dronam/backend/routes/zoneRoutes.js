@@ -1,30 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getAllZones,
-  getZonesByDistrict,
-  getZoneById,
-  createZone,
-  updateZone,
-  deleteZone
-} = require('../controllers/zoneController');
+const zonesController = require('../controllers/zoneController');
 
-// GET all zones
-router.get('/', getAllZones);
+// Get all zones
+router.get('/', zonesController.getAllZones);
 
-// GET zones by district
-router.get('/by-district/:districtId', getZonesByDistrict);
+// Get zones by district
+router.get('/district/:districtId', zonesController.getZonesByDistrict);
 
-// GET single zone by ID
-router.get('/:id', getZoneById);
+// Get single zone
+router.get('/:id', zonesController.getZoneById);
 
-// POST create new zone
-router.post('/', createZone);
+// Create new zone
+router.post('/', zonesController.createZone);
 
-// PUT update zone
-router.put('/:id', updateZone);
+// Update zone
+router.put('/:id', zonesController.updateZone);
 
-// DELETE zone
-router.delete('/:id', deleteZone);
+// Delete zone
+router.delete('/:id', zonesController.deleteZone);
 
 module.exports = router;

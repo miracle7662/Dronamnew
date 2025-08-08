@@ -44,8 +44,8 @@ const DistrictMaster = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    code: '',
+    district_name: '',
+    district_code: '',
     state_id: '',
     description: ''
   });
@@ -88,14 +88,14 @@ const DistrictMaster = () => {
   };
 
   // Load states by country
-  const loadStatesByCountry = async (countryId) => {
-    if (!countryId) {
+  const loadStatesByCountry = async (state_id) => {
+    if (!state_id) {
       setStates([]);
       return;
     }
     
     try {
-      const response = await axios.get(`http://localhost:3001/api/states/by-country/${countryId}`);
+      const response = await axios.get(`http://localhost:3001/api/states/by-country/${state_id}`);
       setStates(response.data);
     } catch (err) {
       console.error('Error loading states:', err);
@@ -105,14 +105,14 @@ const DistrictMaster = () => {
 
   // Handle form input changes
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { district_name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [district_name]: value
     }));
     
     // If country changes, load states for that country
-    if (name === 'country_id') {
+    if (district_name === 'country_id') {
       loadStatesByCountry(value);
       // Reset state_id when country changes
       setFormData(prev => ({
@@ -122,10 +122,10 @@ const DistrictMaster = () => {
     }
     
     // Clear validation error for this field
-    if (errors[name]) {
+    if (errors[district_name]) {
       setErrors(prev => ({
         ...prev,
-        [name]: ''
+        [district_name]: ''
       }));
     }
   };
@@ -134,14 +134,14 @@ const DistrictMaster = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = 'District name is required';
+    if (!formData.district_name.trim()) {
+      newErrors.district_name = 'District name is required';
     }
     
-    if (!formData.code.trim()) {
-      newErrors.code = 'District code is required';
-    } else if (formData.code.length !== 2) {
-      newErrors.code = 'District code must be 2 characters';
+    if (!formData.district_code.trim()) {
+      newErrors.district_code = 'District code is required';
+    } else if (formData.district_code.length !== 2) {
+      newErrors.district_code = 'District code must be 2 characters';
     }
     
     if (!formData.state_id) {
@@ -165,7 +165,7 @@ const DistrictMaster = () => {
     try {
       if (editingDistrict) {
         // Update existing district
-        await axios.put(`http://localhost:3001/api/districts/${editingDistrict.id}`, formData);
+        await axios.put(`http://localhost:3001/api/districts/${editingDistrict.district_id}`, formData);
         // Reload districts to get updated data
         await loadDistricts();
       } else {
@@ -192,8 +192,8 @@ const DistrictMaster = () => {
   const handleEdit = (district) => {
     setEditingDistrict(district);
     setFormData({
-      name: district.name,
-      code: district.code,
+      district_name: district.district_name,
+      district_code: district.district_code,
       state_id: district.state_id,
       description: district.description || ''
     });
@@ -210,7 +210,7 @@ const DistrictMaster = () => {
   const confirmDelete = async () => {
     if (districtToDelete) {
       try {
-        await axios.delete(`http://localhost:3001/api/districts/${districtToDelete.id}`);
+        await axios.delete(`http://localhost:3001/api/districts/${districtToDelete.district_id}`);
         // Reload districts to get updated data
         await loadDistricts();
         setShowDeleteModal(false);
@@ -227,8 +227,8 @@ const DistrictMaster = () => {
     setShowModal(false);
     setEditingDistrict(null);
     setFormData({
-      name: '',
-      code: '',
+      district_name: '',
+      district_code: '',
       state_id: '',
       description: ''
     });
@@ -237,8 +237,8 @@ const DistrictMaster = () => {
 
   // Filter districts based on search term
   const filteredDistricts = districts.filter(district =>
-    district.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    district.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    district.district_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    district.district_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (district.description && district.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (district.state_name && district.state_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (district.country_name && district.country_name.toLowerCase().includes(searchTerm.toLowerCase()))
