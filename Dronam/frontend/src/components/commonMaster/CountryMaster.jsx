@@ -21,8 +21,10 @@ import {
   Flag
 } from 'lucide-react';
 import axios from 'axios';
+import { useAuthContext } from '@/common/context/useAuthContext';
 
 const CountryMaster = () => {
+  const { user } = useAuthContext();
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -93,7 +95,7 @@ const CountryMaster = () => {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      const userId = 1; // TODO: Replace with actual logged-in user ID from auth context
+      const userId = user?.id || 1; // Use actual login user ID from auth context
       if (editingCountry) {
         await axios.put(`http://localhost:3001/api/countries/${editingCountry.country_id}`, {
           ...formData,
@@ -122,7 +124,8 @@ const CountryMaster = () => {
     setFormData({
       country_name: country.country_name,
       country_code: country.country_code,
-      capital: country.capital || ''
+      capital: country.capital || '',
+      status: country.status !== undefined ? country.status : 1
     });
     setShowModal(true);
   };
@@ -151,7 +154,8 @@ const CountryMaster = () => {
     setFormData({
       country_name: '',
       country_code: '',
-      capital: ''
+      capital: '',
+      status: 1
     });
     setErrors({});
   };
