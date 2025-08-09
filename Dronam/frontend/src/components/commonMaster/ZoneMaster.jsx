@@ -11,7 +11,6 @@ import {
   Alert,
   Badge,
   InputGroup,
-  Dropdown,
   Pagination
 } from 'react-bootstrap';
 import { 
@@ -19,21 +18,20 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  Filter,
   MapPin,
   Building,
   Flag,
-  Navigation,
+  Map,
   Globe
 } from 'lucide-react';
 import axios from 'axios';
+import { useAuthContext } from '@/common/context/useAuthContext';
 
 const ZoneMaster = () => {
-  // State management
+  const { user } = useAuthContext();
   const [zones, setZones] = useState([]);
-  const [countries, setCountries] = useState([]);
-  const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
+  const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -44,114 +42,61 @@ const ZoneMaster = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [zoneToDelete, setZoneToDelete] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    code: '',
+    zone_name: '',
+    zone_code: '',
     district_id: '',
-    description: ''
+    description: '',
+    status: 1,
+    created_by_id: null
   });
 
-  // Validation state
   const [errors, setErrors] = useState({});
 
-  // Load data on component mount
   useEffect(() => {
     loadZones();
-    loadCountries();
+    loadDistricts();
+    loadStates();
   }, []);
 
-  // Load zones from API
   const loadZones = async () => {
     setLoading(true);
     setError('');
-    
     try {
       const response = await axios.get('http://localhost:3001/api/zones');
-      console.log('Loaded zones:', response.data);
-      console.log('Number of zones:', response.data.length);
       setZones(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load zones');
-      console.error('Error loading zones:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load countries for dropdown
-  const loadCountries = async () => {
+  const loadDistricts = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/countries');
-      setCountries(response.data);
-    } catch (err) {
-      console.error('Error loading countries:', err);
-    }
-  };
-
-  // Load states by country
-  const loadStatesByCountry = async (countryId) => {
-    if (!countryId) {
-      setStates([]);
-      setDistricts([]);
-      return;
-    }
-    
-    try {
-      const response = await axios.get(`http://localhost:3001/api/states/by-country/${countryId}`);
-      setStates(response.data);
-    } catch (err) {
-      console.error('Error loading states:', err);
-      setStates([]);
-    }
-  };
-
-  // Load districts by state
-  const loadDistrictsByState = async (stateId) => {
-    if (!stateId) {
-      setDistricts([]);
-      return;
-    }
-    
-    try {
-      const response = await axios.get(`http://localhost:3001/api/districts/by-state/${stateId}`);
+      const response = await axios.get('http://localhost:3001/api/districts');
       setDistricts(response.data);
     } catch (err) {
       console.error('Error loading districts:', err);
-      setDistricts([]);
     }
   };
 
-  // Handle form input changes
+  const loadStates = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/states');
+      setStates(response.data);
+    } catch (err) {
+      console.error('Error loading states:', err);
+    }
+  };
+
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: val
     }));
-    
-    // If country changes, load states for that country
-    if (name === 'country_id') {
-      loadStatesByCountry(value);
-      // Reset state_id and district_id when country changes
-      setFormData(prev => ({
-        ...prev,
-        state_id: '',
-        district_id: ''
-      }));
-    }
-    
-    // If state changes, load districts for that state
-    if (name === 'state_id') {
-      loadDistrictsByState(value);
-      // Reset district_id when state changes
-      setFormData(prev => ({
-        ...prev,
-        district_id: ''
-      }));
-    }
-    
-    // Clear validation error for this field
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -160,18 +105,17 @@ const ZoneMaster = () => {
     }
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = 'Zone name is required';
+    if (!formData.zone_name.trim()) {
+      newErrors.zone_name = 'Zone name is required';
     }
     
-    if (!formData.code.trim()) {
-      newErrors.code = 'Zone code is required';
-    } else if (formData.code.length !== 2) {
-      newErrors.code = 'Zone code must be 2 characters';
+    if (!formData.zone_code.trim()) {
+      newErrors.zone_code = 'Zone code is required';
+    } else if (formData.zone_code.length !== 4) {
+      newErrors.zone_code = 'Zone code must be 4 characters';
     }
     
     if (!formData.district_id) {
@@ -182,100 +126,88 @@ const ZoneMaster = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
     
     setLoading(true);
     
     try {
+      const userId = user?.id || 1;
       if (editingZone) {
-        // Update existing zone
-        await axios.put(`http://localhost:3001/api/zones/${editingZone.id}`, formData);
-        // Reload zones to get updated data
+        await axios.put(`http://localhost:3001/api/zones/${editingZone.zone_id}`, {
+          ...formData,
+          updated_by_id: userId
+        });
         await loadZones();
       } else {
-        // Add new zone
-        const response = await axios.post('http://localhost:3001/api/zones', formData);
-        console.log('New zone added:', response.data);
-        
-        // Add the new zone to the list immediately
+        const response = await axios.post('http://localhost:3001/api/zones', {
+          ...formData,
+          created_by_id: userId
+        });
         if (response.data.zone) {
           setZones(prev => [response.data.zone, ...prev]);
         }
       }
-      
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save zone');
-      console.error('Error saving zone:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle edit
   const handleEdit = (zone) => {
     setEditingZone(zone);
     setFormData({
-      name: zone.name,
-      code: zone.code,
+      zone_name: zone.zone_name,
+      zone_code: zone.zone_code,
       district_id: zone.district_id,
-      description: zone.description || ''
+      description: zone.description || '',
+      status: zone.status !== undefined ? zone.status : 1
     });
     setShowModal(true);
   };
 
-  // Handle delete
   const handleDelete = (zone) => {
     setZoneToDelete(zone);
     setShowDeleteModal(true);
   };
 
-  // Confirm delete
   const confirmDelete = async () => {
     if (zoneToDelete) {
       try {
-        await axios.delete(`http://localhost:3001/api/zones/${zoneToDelete.id}`);
-        // Reload zones to get updated data
+        await axios.delete(`http://localhost:3001/api/zones/${zoneToDelete.zone_id}`);
         await loadZones();
         setShowDeleteModal(false);
         setZoneToDelete(null);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete zone');
-        console.error('Error deleting zone:', err);
       }
     }
   };
 
-  // Handle modal close
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingZone(null);
     setFormData({
-      name: '',
-      code: '',
+      zone_name: '',
+      zone_code: '',
       district_id: '',
-      description: ''
+      description: '',
+      status: 1,
+      created_by_id: null
     });
     setErrors({});
   };
 
-  // Filter zones based on search term
   const filteredZones = zones.filter(zone =>
-    zone.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    zone.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    zone.zone_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    zone.zone_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (zone.description && zone.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (zone.district_name && zone.district_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (zone.state_name && zone.state_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (zone.country_name && zone.country_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (zone.district_name && zone.district_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentZones = filteredZones.slice(indexOfFirstItem, indexOfLastItem);
@@ -283,7 +215,6 @@ const ZoneMaster = () => {
 
   return (
     <Container fluid className="py-4">
-      {/* Header */}
       <Row className="mb-4">
         <Col>
           <div className="d-flex justify-content-between align-items-center">
@@ -306,7 +237,6 @@ const ZoneMaster = () => {
         </Col>
       </Row>
 
-      {/* Search and Filters */}
       <Row className="mb-4">
         <Col md={6}>
           <InputGroup>
@@ -321,29 +251,14 @@ const ZoneMaster = () => {
             />
           </InputGroup>
         </Col>
-        <Col md={6} className="d-flex justify-content-end">
-          <Dropdown>
-            <Dropdown.Toggle variant="outline-secondary" className="d-flex align-items-center gap-2">
-              <Filter size={16} />
-              Filter
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item>All Zones</Dropdown.Item>
-              <Dropdown.Item>Active Only</Dropdown.Item>
-              <Dropdown.Item>Inactive Only</Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-        </Col>
       </Row>
 
-      {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError('')}>
           {error}
         </Alert>
       )}
 
-      {/* Zones Table */}
       <Card>
         <Card.Body className="p-0">
           {loading ? (
@@ -363,34 +278,32 @@ const ZoneMaster = () => {
                       <th style={{ minWidth: '100px' }}>Code</th>
                       <th style={{ minWidth: '150px' }}>District</th>
                       <th style={{ minWidth: '150px' }}>State</th>
-                      <th style={{ minWidth: '150px' }}>Country</th>
-                      <th style={{ minWidth: '150px' }}>Description</th>
+                      <th style={{ minWidth: '200px' }}>Description</th>
                       <th style={{ minWidth: '100px' }}>Status</th>
-                      <th style={{ minWidth: '120px' }}>Created</th>
                       <th style={{ minWidth: '120px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentZones.map((zone, index) => (
-                      <tr key={zone.id}>
+                      <tr key={zone.zone_id}>
                         <td>{indexOfFirstItem + index + 1}</td>
                         <td>
                           <div className="d-flex align-items-center">
                             <div className="me-2">
-                              <Building size={16} className="text-muted" />
+                              <Globe size={16} className="text-muted" />
                             </div>
-                            <strong>{zone.name}</strong>
+                            <strong>{zone.zone_name}</strong>
                           </div>
                         </td>
                         <td>
                           <Badge bg="info" className="text-uppercase">
-                            {zone.code}
+                            {zone.zone_code}
                           </Badge>
                         </td>
                         <td>
                           {zone.district_name ? (
                             <div className="d-flex align-items-center">
-                              <Navigation size={14} className="text-muted me-1" />
+                              <MapPin size={14} className="text-muted me-1" />
                               {zone.district_name}
                             </div>
                           ) : (
@@ -400,7 +313,7 @@ const ZoneMaster = () => {
                         <td>
                           {zone.state_name ? (
                             <div className="d-flex align-items-center">
-                              <MapPin size={14} className="text-muted me-1" />
+                              <Flag size={14} className="text-muted me-1" />
                               {zone.state_name}
                             </div>
                           ) : (
@@ -408,20 +321,8 @@ const ZoneMaster = () => {
                           )}
                         </td>
                         <td>
-                          {zone.country_name ? (
-                            <div className="d-flex align-items-center">
-                              <Flag size={14} className="text-muted me-1" />
-                              {zone.country_name}
-                            </div>
-                          ) : (
-                            <span className="text-muted">-</span>
-                          )}
-                        </td>
-                        <td>
                           {zone.description ? (
-                            <span className="text-truncate d-inline-block" style={{ maxWidth: '150px' }}>
-                              {zone.description}
-                            </span>
+                            <span className="text-muted">{zone.description}</span>
                           ) : (
                             <span className="text-muted">-</span>
                           )}
@@ -430,11 +331,6 @@ const ZoneMaster = () => {
                           <Badge bg={zone.status === 1 ? 'success' : 'secondary'}>
                             {zone.status === 1 ? 'Active' : 'Inactive'}
                           </Badge>
-                        </td>
-                        <td>
-                          <small className="text-muted">
-                            {new Date(zone.created_at).toLocaleDateString()}
-                          </small>
                         </td>
                         <td>
                           <div className="d-flex gap-1">
@@ -529,14 +425,14 @@ const ZoneMaster = () => {
                   <Form.Label>Zone Name *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="name"
-                    value={formData.name}
+                    name="zone_name"
+                    value={formData.zone_name}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.name}
+                    isInvalid={!!errors.zone_name}
                     placeholder="Enter zone name"
                   />
                   <Form.Control.Feedback type="invalid">
-                    {errors.name}
+                    {errors.zone_name}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
@@ -545,15 +441,15 @@ const ZoneMaster = () => {
                   <Form.Label>Zone Code *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="code"
-                    value={formData.code}
+                    name="zone_code"
+                    value={formData.zone_code}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.code}
-                    placeholder="e.g., Z1, Z2"
-                    maxLength={2}
+                    isInvalid={!!errors.zone_code}
+                    placeholder="e.g., ZONE, AREA"
+                    maxLength={4}
                   />
                   <Form.Control.Feedback type="invalid">
-                    {errors.code}
+                    {errors.zone_code}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
@@ -570,8 +466,8 @@ const ZoneMaster = () => {
                   >
                     <option value="">Select District</option>
                     {districts.map(district => (
-                      <option key={district.id} value={district.id}>
-                        {district.name}
+                      <option key={district.district_id} value={district.district_id}>
+                        {district.district_name}
                       </option>
                     ))}
                   </Form.Select>
@@ -582,6 +478,21 @@ const ZoneMaster = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value={1}>Active</option>
+                    <option value={0}>Inactive</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={12}>
+                <Form.Group className="mb-3">
                   <Form.Label>Description</Form.Label>
                   <Form.Control
                     as="textarea"
@@ -589,7 +500,7 @@ const ZoneMaster = () => {
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    placeholder="Enter zone description"
+                    placeholder="Enter zone description (optional)"
                   />
                 </Form.Group>
               </Col>
@@ -616,7 +527,7 @@ const ZoneMaster = () => {
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete <strong>{zoneToDelete?.name}</strong>?
+          Are you sure you want to delete <strong>{zoneToDelete?.zone_name}</strong>?
           This action cannot be undone.
         </Modal.Body>
         <Modal.Footer>
@@ -632,4 +543,4 @@ const ZoneMaster = () => {
   );
 };
 
-export default ZoneMaster; 
+export default ZoneMaster;

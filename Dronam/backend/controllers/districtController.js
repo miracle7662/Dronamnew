@@ -7,7 +7,6 @@ const getAllDistricts = (req, res) => {
       SELECT d.*, s.state_name as state_name 
       FROM districts d 
       LEFT JOIN states s ON d.state_id = s.state_id 
-      WHERE d.status = 1 
       ORDER BY d.district_name
     `).all();
     res.json(districts);
@@ -21,7 +20,7 @@ const getDistrictsByState = (req, res) => {
   try {
     const districts = db.prepare(`
       SELECT * FROM districts 
-      WHERE state_id = ? AND status = 1 
+      WHERE state_id = ? 
       ORDER BY district_name
     `).all(req.params.stateId);
     res.json(districts);
@@ -37,7 +36,7 @@ const getDistrictById = (req, res) => {
       SELECT d.*, s.state_name as state_name 
       FROM districts d 
       LEFT JOIN states s ON d.state_id = s.state_id 
-      WHERE d.district_id = ? AND d.status = 1
+      WHERE d.district_id = ?
     `).get(req.params.id);
     
     if (district) {
@@ -52,7 +51,7 @@ const getDistrictById = (req, res) => {
 
 // Create new district
 const createDistrict = (req, res) => {
-  const { district_name, district_code, state_id, description, created_by_id } = req.body;
+  const { district_name, district_code, state_id, description, status, created_by_id } = req.body;
   
   if (!district_name || !district_code || !state_id) {
     return res.status(400).json({ error: 'District name, code, and state_id are required' });
@@ -61,10 +60,10 @@ const createDistrict = (req, res) => {
   try {
     const stmt = db.prepare(`
       INSERT INTO districts 
-      (district_name, district_code, state_id, description, created_by_id) 
-      VALUES (?, ?, ?, ?, ?)
+      (district_name, district_code, state_id, description, status, created_by_id) 
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(district_name, district_code, state_id, description, created_by_id);
+    const result = stmt.run(district_name, district_code, state_id, description || '', status || 1, created_by_id);
     
     // Get the newly created district with all fields
     const newDistrict = db.prepare(`
@@ -85,7 +84,7 @@ const createDistrict = (req, res) => {
 
 // Update district
 const updateDistrict = (req, res) => {
-  const { district_name, district_code, state_id, description, updated_by_id } = req.body;
+  const { district_name, district_code, state_id, description, status, updated_by_id } = req.body;
   const { id } = req.params;
 
   if (!district_name || !district_code || !state_id) {
@@ -95,11 +94,11 @@ const updateDistrict = (req, res) => {
   try {
     const stmt = db.prepare(`
       UPDATE districts 
-      SET district_name = ?, district_code = ?, state_id = ?, description = ?, 
+      SET district_name = ?, district_code = ?, state_id = ?, description = ?, status = ?,
           updated_by_id = ?, updated_date = CURRENT_TIMESTAMP 
       WHERE district_id = ?
     `);
-    const result = stmt.run(district_name, district_code, state_id, description, updated_by_id, id);
+    const result = stmt.run(district_name, district_code, state_id, description || '', status || 1, updated_by_id, id);
     
     if (result.changes > 0) {
       res.json({ message: 'District updated successfully!' });

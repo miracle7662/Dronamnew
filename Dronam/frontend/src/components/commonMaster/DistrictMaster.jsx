@@ -11,7 +11,6 @@ import {
   Alert,
   Badge,
   InputGroup,
-  Dropdown,
   Pagination
 } from 'react-bootstrap';
 import { 
@@ -19,18 +18,17 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  Filter,
   MapPin,
   Building,
   Flag,
-  Navigation
+  Map
 } from 'lucide-react';
 import axios from 'axios';
+import { useAuthContext } from '@/common/context/useAuthContext';
 
 const DistrictMaster = () => {
-  // State management
+  const { user } = useAuthContext();
   const [districts, setDistricts] = useState([]);
-  const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,95 +40,59 @@ const DistrictMaster = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [districtToDelete, setDistrictToDelete] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     district_name: '',
     district_code: '',
     state_id: '',
-    description: ''
+    description: '',
+    status: 1,
+    created_by_id: null
   });
 
-  // Validation state
   const [errors, setErrors] = useState({});
 
-  // Load data on component mount
   useEffect(() => {
     loadDistricts();
-    loadCountries();
+    loadStates();
   }, []);
 
-  // Load districts from API
   const loadDistricts = async () => {
     setLoading(true);
     setError('');
-    
     try {
       const response = await axios.get('http://localhost:3001/api/districts');
-      console.log('Loaded districts:', response.data);
-      console.log('Number of districts:', response.data.length);
       setDistricts(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load districts');
-      console.error('Error loading districts:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load countries for dropdown
-  const loadCountries = async () => {
+  const loadStates = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/countries');
-      setCountries(response.data);
-    } catch (err) {
-      console.error('Error loading countries:', err);
-    }
-  };
-
-  // Load states by country
-  const loadStatesByCountry = async (state_id) => {
-    if (!state_id) {
-      setStates([]);
-      return;
-    }
-    
-    try {
-      const response = await axios.get(`http://localhost:3001/api/states/by-country/${state_id}`);
+      const response = await axios.get('http://localhost:3001/api/states');
       setStates(response.data);
     } catch (err) {
       console.error('Error loading states:', err);
-      setStates([]);
     }
   };
 
-  // Handle form input changes
   const handleInputChange = (e) => {
-    const { district_name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
     setFormData(prev => ({
       ...prev,
-      [district_name]: value
+      [name]: val
     }));
-    
-    // If country changes, load states for that country
-    if (district_name === 'country_id') {
-      loadStatesByCountry(value);
-      // Reset state_id when country changes
-      setFormData(prev => ({
-        ...prev,
-        state_id: ''
-      }));
-    }
-    
-    // Clear validation error for this field
-    if (errors[district_name]) {
+    if (errors[name]) {
       setErrors(prev => ({
         ...prev,
-        [district_name]: ''
+        [name]: ''
       }));
     }
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
     
@@ -140,8 +102,8 @@ const DistrictMaster = () => {
     
     if (!formData.district_code.trim()) {
       newErrors.district_code = 'District code is required';
-    } else if (formData.district_code.length !== 2) {
-      newErrors.district_code = 'District code must be 2 characters';
+    } else if (formData.district_code.length !== 4) {
+      newErrors.district_code = 'District code must be 4 characters';
     }
     
     if (!formData.state_id) {
@@ -152,77 +114,67 @@ const DistrictMaster = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
     
     setLoading(true);
     
     try {
+      const userId = user?.id || 1;
       if (editingDistrict) {
-        // Update existing district
-        await axios.put(`http://localhost:3001/api/districts/${editingDistrict.district_id}`, formData);
-        // Reload districts to get updated data
+        await axios.put(`http://localhost:3001/api/districts/${editingDistrict.district_id}`, {
+          ...formData,
+          updated_by_id: userId
+        });
         await loadDistricts();
       } else {
-        // Add new district
-        const response = await axios.post('http://localhost:3001/api/districts', formData);
-        console.log('New district added:', response.data);
-        
-        // Add the new district to the list immediately
+        const response = await axios.post('http://localhost:3001/api/districts', {
+          ...formData,
+          created_by_id: userId
+        });
         if (response.data.district) {
           setDistricts(prev => [response.data.district, ...prev]);
         }
       }
-      
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save district');
-      console.error('Error saving district:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle edit
   const handleEdit = (district) => {
     setEditingDistrict(district);
     setFormData({
       district_name: district.district_name,
       district_code: district.district_code,
       state_id: district.state_id,
-      description: district.description || ''
+      description: district.description || '',
+      status: district.status !== undefined ? district.status : 1
     });
     setShowModal(true);
   };
 
-  // Handle delete
   const handleDelete = (district) => {
     setDistrictToDelete(district);
     setShowDeleteModal(true);
   };
 
-  // Confirm delete
   const confirmDelete = async () => {
     if (districtToDelete) {
       try {
         await axios.delete(`http://localhost:3001/api/districts/${districtToDelete.district_id}`);
-        // Reload districts to get updated data
         await loadDistricts();
         setShowDeleteModal(false);
         setDistrictToDelete(null);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete district');
-        console.error('Error deleting district:', err);
       }
     }
   };
 
-  // Handle modal close
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingDistrict(null);
@@ -230,21 +182,20 @@ const DistrictMaster = () => {
       district_name: '',
       district_code: '',
       state_id: '',
-      description: ''
+      description: '',
+      status: 1,
+      created_by_id: null
     });
     setErrors({});
   };
 
-  // Filter districts based on search term
   const filteredDistricts = districts.filter(district =>
     district.district_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     district.district_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (district.description && district.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (district.state_name && district.state_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (district.country_name && district.country_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (district.state_name && district.state_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentDistricts = filteredDistricts.slice(indexOfFirstItem, indexOfLastItem);
@@ -252,13 +203,12 @@ const DistrictMaster = () => {
 
   return (
     <Container fluid className="py-4">
-      {/* Header */}
       <Row className="mb-4">
         <Col>
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h2 className="mb-1">
-                <Navigation className="me-2" size={24} />
+                <Map className="me-2" size={24} />
                 District Master
               </h2>
               <p className="text-muted mb-0">Manage districts and their information</p>
@@ -275,7 +225,6 @@ const DistrictMaster = () => {
         </Col>
       </Row>
 
-      {/* Search and Filters */}
       <Row className="mb-4">
         <Col md={6}>
           <InputGroup>
@@ -290,29 +239,14 @@ const DistrictMaster = () => {
             />
           </InputGroup>
         </Col>
-        <Col md={6} className="d-flex justify-content-end">
-          <Dropdown>
-            <Dropdown.Toggle variant="outline-secondary" className="d-flex align-items-center gap-2">
-              <Filter size={16} />
-              Filter
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item>All Districts</Dropdown.Item>
-              <Dropdown.Item>Active Only</Dropdown.Item>
-              <Dropdown.Item>Inactive Only</Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-        </Col>
       </Row>
 
-      {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError('')}>
           {error}
         </Alert>
       )}
 
-      {/* Districts Table */}
       <Card>
         <Card.Body className="p-0">
           {loading ? (
@@ -331,28 +265,26 @@ const DistrictMaster = () => {
                       <th style={{ minWidth: '200px' }}>District</th>
                       <th style={{ minWidth: '100px' }}>Code</th>
                       <th style={{ minWidth: '150px' }}>State</th>
-                      <th style={{ minWidth: '150px' }}>Country</th>
-                      <th style={{ minWidth: '150px' }}>Description</th>
+                      <th style={{ minWidth: '200px' }}>Description</th>
                       <th style={{ minWidth: '100px' }}>Status</th>
-                      <th style={{ minWidth: '120px' }}>Created</th>
                       <th style={{ minWidth: '120px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentDistricts.map((district, index) => (
-                      <tr key={district.id}>
+                      <tr key={district.district_id}>
                         <td>{indexOfFirstItem + index + 1}</td>
                         <td>
                           <div className="d-flex align-items-center">
                             <div className="me-2">
                               <Building size={16} className="text-muted" />
                             </div>
-                            <strong>{district.name}</strong>
+                            <strong>{district.district_name}</strong>
                           </div>
                         </td>
                         <td>
                           <Badge bg="info" className="text-uppercase">
-                            {district.code}
+                            {district.district_code}
                           </Badge>
                         </td>
                         <td>
@@ -366,20 +298,8 @@ const DistrictMaster = () => {
                           )}
                         </td>
                         <td>
-                          {district.country_name ? (
-                            <div className="d-flex align-items-center">
-                              <Flag size={14} className="text-muted me-1" />
-                              {district.country_name}
-                            </div>
-                          ) : (
-                            <span className="text-muted">-</span>
-                          )}
-                        </td>
-                        <td>
                           {district.description ? (
-                            <span className="text-truncate d-inline-block" style={{ maxWidth: '150px' }}>
-                              {district.description}
-                            </span>
+                            <span className="text-muted">{district.description}</span>
                           ) : (
                             <span className="text-muted">-</span>
                           )}
@@ -388,11 +308,6 @@ const DistrictMaster = () => {
                           <Badge bg={district.status === 1 ? 'success' : 'secondary'}>
                             {district.status === 1 ? 'Active' : 'Inactive'}
                           </Badge>
-                        </td>
-                        <td>
-                          <small className="text-muted">
-                            {new Date(district.created_at).toLocaleDateString()}
-                          </small>
                         </td>
                         <td>
                           <div className="d-flex gap-1">
@@ -423,7 +338,7 @@ const DistrictMaster = () => {
               {/* Empty State */}
               {currentDistricts.length === 0 && (
                 <div className="text-center py-5">
-                  <Navigation size={48} className="text-muted mb-3" />
+                  <Map size={48} className="text-muted mb-3" />
                   <h5 className="text-muted">No districts found</h5>
                   <p className="text-muted">
                     {searchTerm ? 'Try adjusting your search terms' : 'Add your first district to get started'}
@@ -487,14 +402,14 @@ const DistrictMaster = () => {
                   <Form.Label>District Name *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="name"
-                    value={formData.name}
+                    name="district_name"
+                    value={formData.district_name}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.name}
+                    isInvalid={!!errors.district_name}
                     placeholder="Enter district name"
                   />
                   <Form.Control.Feedback type="invalid">
-                    {errors.name}
+                    {errors.district_name}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
@@ -503,15 +418,15 @@ const DistrictMaster = () => {
                   <Form.Label>District Code *</Form.Label>
                   <Form.Control
                     type="text"
-                    name="code"
-                    value={formData.code}
+                    name="district_code"
+                    value={formData.district_code}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.code}
-                    placeholder="e.g., DL, MH"
-                    maxLength={2}
+                    isInvalid={!!errors.district_code}
+                    placeholder="e.g., MH09, MH10"
+                    maxLength={4}
                   />
                   <Form.Control.Feedback type="invalid">
-                    {errors.code}
+                    {errors.district_code}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
@@ -528,8 +443,8 @@ const DistrictMaster = () => {
                   >
                     <option value="">Select State</option>
                     {states.map(state => (
-                      <option key={state.id} value={state.id}>
-                        {state.name}
+                      <option key={state.state_id} value={state.state_id}>
+                        {state.state_name}
                       </option>
                     ))}
                   </Form.Select>
@@ -540,6 +455,21 @@ const DistrictMaster = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value={1}>Active</option>
+                    <option value={0}>Inactive</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={12}>
+                <Form.Group className="mb-3">
                   <Form.Label>Description</Form.Label>
                   <Form.Control
                     as="textarea"
@@ -547,7 +477,7 @@ const DistrictMaster = () => {
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    placeholder="Enter district description"
+                    placeholder="Enter district description (optional)"
                   />
                 </Form.Group>
               </Col>
@@ -574,7 +504,7 @@ const DistrictMaster = () => {
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete <strong>{districtToDelete?.name}</strong>?
+          Are you sure you want to delete <strong>{districtToDelete?.district_name}</strong>?
           This action cannot be undone.
         </Modal.Body>
         <Modal.Footer>
@@ -590,4 +520,4 @@ const DistrictMaster = () => {
   );
 };
 
-export default DistrictMaster; 
+export default DistrictMaster;

@@ -424,7 +424,7 @@ const StateMaster = () => {
                     value={formData.state_code}
                     onChange={handleInputChange}
                     isInvalid={!!errors.state_code}
-                    placeholder="e.g., CA, NY"
+                    placeholder="e.g., Maharashtra-27, 28,29"
                     maxLength={2}
                   />
                   <Form.Control.Feedback type="invalid">

@@ -2149,10 +2149,11 @@ const SUPERADMIN_MENU_ITEMS: MenuItemTypes[] = [
         parentKey: 'userManagement',
         roles: ['superadmin'],
       },
+      
       {
-        key: 'hotels',
+        key: 'HotelMaster',
         label: 'Manage Hotels',
-        url: '/apps/hotels',
+        url: '/apps/HotelMaster',
         parentKey: 'userManagement',
         roles: ['superadmin'],
       },

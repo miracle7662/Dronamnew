@@ -1,22 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const {
-  login,
   getAllHotels,
   getHotelById,
   createHotel,
   updateHotel,
-  deleteHotel
+  deleteHotel,
+  getHotelsByCountry,
+  getHotelsByState,
+  getHotelsByDistrict,
+  getHotelsByZone
 } = require('../controllers/hotelController');
 
-// Public routes
-router.post('/login', login);
-
-// Protected routes (you can add middleware here later)
+// Get all hotels
 router.get('/', getAllHotels);
+
+// Get hotel by ID
 router.get('/:id', getHotelById);
+
+// Create new hotel
 router.post('/', createHotel);
+
+// Update hotel
 router.put('/:id', updateHotel);
+
+// Delete hotel (soft delete)
 router.delete('/:id', deleteHotel);
 
-module.exports = router; 
+// Get hotels by country
+router.get('/country/:countryId', getHotelsByCountry);
+
+// Get hotels by state
+router.get('/state/:stateId', getHotelsByState);
+
+// Get hotels by district
+router.get('/district/:districtId', getHotelsByDistrict);
+
+// Get hotels by zone
+router.get('/zone/:zoneId', getHotelsByZone);
+
+module.exports = router;
