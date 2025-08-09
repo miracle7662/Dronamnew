@@ -2133,6 +2133,13 @@ const SUPERADMIN_MENU_ITEMS: MenuItemTypes[] = [
         parentKey: 'commonMasters',
         roles: ['superadmin'],
       },
+       {
+        key: 'HotelMaster',
+        label: 'HotelMaster',
+        url: '/apps/HotelMaster',
+        parentKey: 'commonMasters',
+        roles: ['superadmin'],
+      },
     ],
   },
   {
@@ -2151,12 +2158,13 @@ const SUPERADMIN_MENU_ITEMS: MenuItemTypes[] = [
       },
       
       {
-        key: 'HotelMaster',
+        key: 'HotelMasters',
         label: 'Manage Hotels',
-        url: '/apps/HotelMaster',
+        url: '/apps/HotelMasters',
         parentKey: 'userManagement',
         roles: ['superadmin'],
       },
+
       {
         key: 'permissions',
         label: 'Permissions',

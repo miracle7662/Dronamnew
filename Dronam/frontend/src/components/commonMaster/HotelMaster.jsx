@@ -67,8 +67,10 @@ const HotelMaster = () => {
     aadhar_no: '',
     owner_name: '',
     Owner_mobile: '',
-    hotel_timeMorning: '',
-    hotel_timeEvening: '',
+    hotel_timeMorningStart: '',
+    hotel_timeMorningEnd: '',
+    hotel_timeEveningStart: '',
+    hotel_timeEveningEnd: '',
     status: 1,
     created_by_id: null,
     masteruserid: null
@@ -185,15 +187,25 @@ const HotelMaster = () => {
     
     try {
       const userId = user?.id || 1;
+      const hotel_timeMorning = formData.hotel_timeMorningStart && formData.hotel_timeMorningEnd
+        ? `${formData.hotel_timeMorningStart} to ${formData.hotel_timeMorningEnd}`
+        : '';
+      const hotel_timeEvening = formData.hotel_timeEveningStart && formData.hotel_timeEveningEnd
+        ? `${formData.hotel_timeEveningStart} to ${formData.hotel_timeEveningEnd}`
+        : '';
       if (editingHotel) {
         await axios.put(`http://localhost:3001/api/hotels/${editingHotel.hotelid}`, {
           ...formData,
+          hotel_timeMorning,
+          hotel_timeEvening,
           updated_by_id: userId
         });
         await loadHotels();
       } else {
         const response = await axios.post('http://localhost:3001/api/hotels', {
           ...formData,
+          hotel_timeMorning,
+          hotel_timeEvening,
           created_by_id: userId,
           masteruserid: userId
         });
@@ -211,6 +223,8 @@ const HotelMaster = () => {
 
   const handleEdit = (hotel) => {
     setEditingHotel(hotel);
+    const [morningStart, morningEnd] = (hotel.hotel_timeMorning || '').split(' to ');
+    const [eveningStart, eveningEnd] = (hotel.hotel_timeEvening || '').split(' to ');
     setFormData({
       hotel_name: hotel.hotel_name || '',
       hotel_type: hotel.hotel_type || '',
@@ -227,8 +241,10 @@ const HotelMaster = () => {
       aadhar_no: hotel.aadhar_no || '',
       owner_name: hotel.owner_name || '',
       Owner_mobile: hotel.Owner_mobile || '',
-      hotel_timeMorning: hotel.hotel_timeMorning || '',
-      hotel_timeEvening: hotel.hotel_timeEvening || '',
+      hotel_timeMorningStart: morningStart || '',
+      hotel_timeMorningEnd: morningEnd || '',
+      hotel_timeEveningStart: eveningStart || '',
+      hotel_timeEveningEnd: eveningEnd || '',
       status: hotel.status !== undefined ? hotel.status : 1
     });
     setShowModal(true);
@@ -783,28 +799,50 @@ const HotelMaster = () => {
             </Row>
 
             <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Morning Time</Form.Label>
-                  <Form.Control
-                    type="time"
-                    name="hotel_timeMorning"
-                    value={formData.hotel_timeMorning}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Evening Time</Form.Label>
-                  <Form.Control
-                    type="time"
-                    name="hotel_timeEvening"
-                    value={formData.hotel_timeEvening}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-              </Col>
+            <Col md={3}>
+              <Form.Group className="mb-3">
+                <Form.Label>Morning Time Start</Form.Label>
+                <Form.Control
+                  type="time"
+                  name="hotel_timeMorningStart"
+                  value={formData.hotel_timeMorningStart}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={3}>
+              <Form.Group className="mb-3">
+                <Form.Label>Morning Time End</Form.Label>
+                <Form.Control
+                  type="time"
+                  name="hotel_timeMorningEnd"
+                  value={formData.hotel_timeMorningEnd}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={3}>
+              <Form.Group className="mb-3">
+                <Form.Label>Evening Time Start</Form.Label>
+                <Form.Control
+                  type="time"
+                  name="hotel_timeEveningStart"
+                  value={formData.hotel_timeEveningStart}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={3}>
+              <Form.Group className="mb-3">
+                <Form.Label>Evening Time End</Form.Label>
+                <Form.Control
+                  type="time"
+                  name="hotel_timeEveningEnd"
+                  value={formData.hotel_timeEveningEnd}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+            </Col>
             </Row>
 
             <Row>

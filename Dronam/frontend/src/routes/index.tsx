@@ -18,6 +18,9 @@ const Kanban = React.lazy(() => import('./../views/apps/Kanban'))
 const Contact = React.lazy(() => import('./../views/apps/Contact'))
 const Calendar = React.lazy(() => import('./../views/apps/Calendar'))
 
+const HotelMasterPage = React.lazy(() => import('../views/apps/HotelMaster'))
+const HotelMasters = React.lazy(() => import('../views/apps/HotelMasters'))
+
 // Superadmin
 
 
@@ -258,6 +261,18 @@ const dashboardRoutes: RoutesProps = {
       path: '/dashboards/crm',
       name: 'CRM',
       element: <CRM />,
+      route: PrivateRoute,
+    },
+    {
+      path: '/apps/HotelMaster',
+      name: 'HotelMaster',
+      element: <HotelMasterPage />,
+      route: PrivateRoute,
+    },
+    {
+      path: '/apps/HotelMasters',
+      name: 'HotelMasters',
+      element: <HotelMasters />,
       route: PrivateRoute,
     },
   ],
