@@ -32,7 +32,8 @@ const Country = React.lazy(() => import('./../views/apps/Country')) // Updated t
 const States = React.lazy(() => import('./../views/apps/States')) // Updated to use <States /> component
 const Districts = React.lazy(() => import('./../views/apps/Districts')) // Updated to use <Districts /> component
 const Zones = React.lazy(() => import('./../views/apps/Zones')) // Updated to use <Zones /> component
-const ManageAgents = React.lazy(() => import('./../views/apps/ManageAgents')) // Added ManageAgents component
+//const ManageAgents = React.lazy(() => import('./../views/apps/ManageAgents')) // Added ManageAgents component
+const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgents')) // Added ManageAgents component
 const City = React.lazy(() => import('../views/apps/City')) // Updated to use <City /> component
 // const ItemGroup = React.lazy(() => import('../views/apps/ItemGroup'))
 const GuestTypemaster = React.lazy(() => import('../views/apps/GuestTypemaster'))
@@ -364,7 +365,7 @@ const appsRoutes: RoutesProps = {
       route: PrivateRoute,
     },
     {
-      path: '/apps/agents',
+      path: '/apps/ManageAgents',
       name: 'Manage Agents',
       element: <ManageAgents />,
       route: PrivateRoute,

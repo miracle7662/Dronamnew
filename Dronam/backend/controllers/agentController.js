@@ -53,7 +53,7 @@ const login = async (req, res) => {
 // Get all agents
 const getAllAgents = (req, res) => {
   try {
-    const agents = db.prepare('SELECT * FROM agents ORDER BY created_at DESC').all();
+    const agents = db.prepare('SELECT * FROM agents ORDER BY created_date DESC').all();
     res.json(agents);
   } catch (error) {
     console.error('Error fetching agents:', error);
@@ -114,13 +114,13 @@ const createAgent = async (req, res) => {
       INSERT INTO agents (
         email, password, name, role, phone, address, 
         country_id, state_id, district_id, zone_id, 
-        pan_number, aadhar_number, gst_number, created_by
+        pan_number, aadhar_number, gst_number, created_by_id
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       email, hashedPassword, name, role || 'agent', phone, address,
       country_id, state_id, district_id, zone_id,
-      pan_number, aadhar_number, gst_number, 1 // created_by = 1 (superadmin)
+      pan_number, aadhar_number, gst_number, 1 // created_by_id = 1 (superadmin)
     );
 
     const newAgent = db.prepare('SELECT * FROM agents WHERE id = ?').get(result.lastInsertRowid);
@@ -162,7 +162,8 @@ const updateAgent = async (req, res) => {
       pan_number, 
       aadhar_number,
       gst_number,
-      status 
+      status,
+      updated_by_id
     } = req.body;
     
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(id);
@@ -179,7 +180,8 @@ const updateAgent = async (req, res) => {
       UPDATE agents 
       SET email = ?, password = ?, name = ?, role = ?, phone = ?, address = ?, 
           country_id = ?, state_id = ?, district_id = ?, zone_id = ?, 
-          pan_number = ?, aadhar_number = ?, gst_number = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+          pan_number = ?, aadhar_number = ?, gst_number = ?, status = ?, 
+          updated_by_id = ?, Updated_date = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
       email || agent.email, 
@@ -195,7 +197,8 @@ const updateAgent = async (req, res) => {
       pan_number || agent.pan_number,
       aadhar_number || agent.aadhar_number,
       gst_number || agent.gst_number,
-      status !== undefined ? status : agent.status, 
+      status !== undefined ? status : agent.status,
+      updated_by_id || 1, // Default to 1 (superadmin) if not provided
       id
     );
 

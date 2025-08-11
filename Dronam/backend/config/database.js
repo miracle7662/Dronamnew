@@ -33,7 +33,7 @@ const initDatabase = () => {
         created_by_id INTEGER,
         created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_by_id INTEGER,
-        updated_date DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_date DATETIME 
       );
 
       /* Create states table */
@@ -47,7 +47,7 @@ const initDatabase = () => {
         created_by_id INTEGER,
         created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_by_id INTEGER,
-        updated_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_date DATETIME ,
         FOREIGN KEY (country_id) REFERENCES countries (country_id)
       );
 
@@ -62,7 +62,7 @@ const initDatabase = () => {
         created_by_id INTEGER,
         created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_by_id INTEGER,
-        updated_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_date DATETIME ,
         FOREIGN KEY (state_id) REFERENCES states (state_id)
       );
 
@@ -77,7 +77,7 @@ const initDatabase = () => {
         created_by_id INTEGER,
         created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_by_id INTEGER,
-        updated_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_date DATETIME,
         FOREIGN KEY (district_id) REFERENCES districts (district_id)
       );
 
@@ -89,7 +89,7 @@ const initDatabase = () => {
         name TEXT NOT NULL,
         status INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME
       );
 
       /* Create agents table */
@@ -109,9 +109,10 @@ const initDatabase = () => {
         aadhar_number TEXT,
         gst_number TEXT,
         status INTEGER DEFAULT 1,
-        created_by INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by_id INTEGER,
+        created_by_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_by_id INTEGER,
+        updated_by_date DATETIME,
         FOREIGN KEY (created_by) REFERENCES superadmins (id),
         FOREIGN KEY (country_id) REFERENCES countries (country_id),
         FOREIGN KEY (state_id) REFERENCES states (state_id),
@@ -143,7 +144,7 @@ const initDatabase = () => {
         created_by_id INTEGER,
         created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_by_id INTEGER,
-        updated_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_date DATETIME,
         masteruserid INTEGER,
         FOREIGN KEY (created_by_id) REFERENCES agents(id),
         FOREIGN KEY (country_id) REFERENCES countries(country_id),

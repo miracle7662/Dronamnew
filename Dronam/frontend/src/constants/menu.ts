@@ -217,9 +217,9 @@ const MENU_ITEMS: MenuItemTypes[] = [
         parentKey: 'commonMasters',
       },
       {
-        key: 'manageAgents',
+        key: 'ManageAgents',
         label: 'Manage Agents',
-        url: '/apps/agents',
+        url: '/commonMasters/ManageAgents',
         parentKey: 'commonMasters',
       },
     ],
@@ -2150,9 +2150,9 @@ const SUPERADMIN_MENU_ITEMS: MenuItemTypes[] = [
     roles: ['superadmin'],
     children: [
       {
-        key: 'agents',
+        key: 'ManageAgents',
         label: 'Manage Agents',
-        url: '/apps/agents',
+        url: '/apps/ManageAgents',
         parentKey: 'userManagement',
         roles: ['superadmin'],
       },
