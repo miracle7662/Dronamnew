@@ -18,9 +18,7 @@ import {
   Search, 
   Edit, 
   Trash2, 
-  MapPin,
-  Building,
-  Flag
+  MapPin
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthContext } from '@/common/context/useAuthContext';
@@ -28,7 +26,6 @@ import { useAuthContext } from '@/common/context/useAuthContext';
 const StateMaster = () => {
   const { user } = useAuthContext();
   const [states, setStates] = useState([]);
-  const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -49,6 +46,7 @@ const StateMaster = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [countries, setCountries] = useState([]);
 
   useEffect(() => {
     loadStates();
@@ -60,9 +58,19 @@ const StateMaster = () => {
     setError('');
     try {
       const response = await axios.get('http://localhost:3001/api/states');
-      setStates(response.data);
+      if (response && response.data) {
+        setStates(response.data);
+      } else {
+        setError('Invalid response from server');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load states');
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Failed to load states');
+      }
     } finally {
       setLoading(false);
     }
@@ -71,9 +79,11 @@ const StateMaster = () => {
   const loadCountries = async () => {
     try {
       const response = await axios.get('http://localhost:3001/api/countries');
-      setCountries(response.data);
-    } catch (err) {
-      console.error('Error loading countries:', err);
+      if (response && response.data) {
+        setCountries(response.data);
+      }
+    } catch {
+      // silently ignore country load errors
     }
   };
 
@@ -94,21 +104,15 @@ const StateMaster = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
     if (!formData.state_name.trim()) {
       newErrors.state_name = 'State name is required';
     }
-    
     if (!formData.state_code.trim()) {
       newErrors.state_code = 'State code is required';
-    } else if (formData.state_code.length !== 2) {
-      newErrors.state_code = 'State code must be 2 characters';
     }
-    
     if (!formData.country_id) {
       newErrors.country_id = 'Country is required';
     }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -116,9 +120,7 @@ const StateMaster = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
     setLoading(true);
-    
     try {
       const userId = user?.id || 1;
       if (editingState) {
@@ -150,7 +152,7 @@ const StateMaster = () => {
       state_name: state.state_name,
       state_code: state.state_code,
       capital: state.capital || '',
-      country_id: state.country_id,
+      country_id: state.country_id || '',
       status: state.status !== undefined ? state.status : 1
     });
     setShowModal(true);
@@ -182,8 +184,7 @@ const StateMaster = () => {
       state_code: '',
       capital: '',
       country_id: '',
-      status: 1,
-      created_by_id: null
+      status: 1
     });
     setErrors({});
   };
@@ -274,42 +275,21 @@ const StateMaster = () => {
                       <tr key={state.state_id}>
                         <td>{indexOfFirstItem + index + 1}</td>
                         <td>
-                          <div className="d-flex align-items-center">
-                            <div className="me-2">
-                              <Building size={16} className="text-muted" />
-                            </div>
-                            <strong>{state.state_name}</strong>
-                          </div>
+                          <strong>{state.state_name}</strong>
                         </td>
                         <td>
                           <Badge bg="info" className="text-uppercase">
                             {state.state_code}
                           </Badge>
                         </td>
+                        <td>{state.capital || <span className="text-muted">-</span>}</td>
+                        <td>{state.country_name || <span className="text-muted">-</span>}</td>
                         <td>
-                          {state.capital ? (
-                            <div className="d-flex align-items-center">
-                              <MapPin size={14} className="text-muted me-1" />
-                              {state.capital}
-                            </div>
+                          {state.status === 1 ? (
+                            <Badge bg="success">Active</Badge>
                           ) : (
-                            <span className="text-muted">-</span>
+                            <Badge bg="secondary">Inactive</Badge>
                           )}
-                        </td>
-                        <td>
-                          {state.country_name ? (
-                            <div className="d-flex align-items-center">
-                              <Flag size={14} className="text-muted me-1" />
-                              {state.country_name}
-                            </div>
-                          ) : (
-                            <span className="text-muted">-</span>
-                          )}
-                        </td>
-                        <td>
-                          <Badge bg={state.status === 1 ? 'success' : 'secondary'}>
-                            {state.status === 1 ? 'Active' : 'Inactive'}
-                          </Badge>
                         </td>
                         <td>
                           <div className="d-flex gap-1">
@@ -337,7 +317,6 @@ const StateMaster = () => {
                 </Table>
               </div>
 
-              {/* Empty State */}
               {currentStates.length === 0 && (
                 <div className="text-center py-5">
                   <MapPin size={48} className="text-muted mb-3" />
@@ -352,7 +331,6 @@ const StateMaster = () => {
         </Card.Body>
       </Card>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <Row className="mt-4">
           <Col className="d-flex justify-content-center">
@@ -365,7 +343,6 @@ const StateMaster = () => {
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               />
-              
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                 <Pagination.Item
                   key={page}
@@ -375,7 +352,6 @@ const StateMaster = () => {
                   {page}
                 </Pagination.Item>
               ))}
-              
               <Pagination.Next 
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
@@ -389,12 +365,9 @@ const StateMaster = () => {
         </Row>
       )}
 
-      {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>
-            {editingState ? 'Edit State' : 'Add New State'}
-          </Modal.Title>
+          <Modal.Title>{editingState ? 'Edit State' : 'Add New State'}</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
@@ -424,8 +397,8 @@ const StateMaster = () => {
                     value={formData.state_code}
                     onChange={handleInputChange}
                     isInvalid={!!errors.state_code}
-                    placeholder="e.g., Maharashtra-27, 28,29"
-                    maxLength={2}
+                    placeholder="e.g., KA, TN"
+                    maxLength={3}
                   />
                   <Form.Control.Feedback type="invalid">
                     {errors.state_code}
@@ -459,7 +432,7 @@ const StateMaster = () => {
                     onChange={handleInputChange}
                     isInvalid={!!errors.country_id}
                   >
-                    <option value="">Select Country</option>
+                    <option value="">Select country</option>
                     {countries.map(country => (
                       <option key={country.country_id} value={country.country_id}>
                         {country.country_name}
@@ -492,18 +465,13 @@ const StateMaster = () => {
             <Button variant="secondary" onClick={handleCloseModal}>
               Cancel
             </Button>
-            <Button 
-              variant="primary" 
-              type="submit"
-              disabled={loading}
-            >
+            <Button variant="primary" type="submit" disabled={loading}>
               {loading ? 'Saving...' : (editingState ? 'Update' : 'Save')}
             </Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Confirm Delete</Modal.Title>
