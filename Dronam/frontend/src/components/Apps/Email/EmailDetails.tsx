@@ -6,7 +6,7 @@ import PerfectScrollbar from 'react-perfect-scrollbar'
 import { Card, Stack, Button } from 'react-bootstrap'
 import Avatar from '@/components/UiElements/Base/Avatars/Avatar'
 import { emailItem } from '@/components/Apps/Email/data/types'
-import 'react-quill/dist/quill.snow.css'
+
 
 const EmailDetails: React.FC<{
   selectedEmail: emailItem | null

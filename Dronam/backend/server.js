@@ -1,8 +1,9 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const { db, testConnection, initDatabase } = require("./config/database");
+const { pool, testConnection, initDatabase } = require("./config/database"); // ✅ Changed from db to pool
 
 // Import routes
 const countryRoutes = require('./routes/countryRoutes');
@@ -23,9 +24,17 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize database
-initDatabase();
-testConnection();
+// Initialize database (MySQL)
+(async () => {
+    const connected = await testConnection();
+    if (connected) {
+        await initDatabase();
+        console.log("📊 MySQL Database initialized successfully!");
+    } else {
+        console.error("❌ Failed to connect to MySQL database!");
+        process.exit(1);
+    }
+})();
 
 // Routes
 app.use('/api/countries', countryRoutes);
@@ -39,7 +48,7 @@ app.use('/api/hotels', hotelRoutes);
 // Basic route
 app.get("/", (req, res) => {
     res.json({ 
-        message: "Lodging Management API is running!",
+        message: "Lodging Management API is running with MySQL!",
         status: "Database connected successfully",
         endpoints: {
             countries: "/api/countries",
@@ -55,5 +64,4 @@ app.get("/", (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`📊 Database initialized and ready!`);
 });
