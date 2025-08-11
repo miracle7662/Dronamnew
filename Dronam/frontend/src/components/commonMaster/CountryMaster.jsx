@@ -55,12 +55,28 @@ const CountryMaster = () => {
     setError('');
     try {
       const response = await axios.get('http://localhost:3001/api/countries');
-      setCountries(response.data);
+      if (response && response.data) {
+        setCountries(response.data);
+      } else {
+        setError('Invalid response from server');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load countries');
+      // Improved error handling to avoid crash if err.response is undefined
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Failed to load countries');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  // Added function to refresh countries list after create/update/delete
+  const refreshCountries = async () => {
+    await loadCountries();
   };
 
   const handleInputChange = (e) => {

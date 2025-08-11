@@ -1,6 +1,7 @@
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 
 // JWT Secret (in production, use environment variable)
 const JWT_SECRET = 'lodging-superadmin-secret-key-2024';
@@ -16,7 +17,8 @@ const login = async (req, res) => {
     }
 
     // Find superadmin by email
-    const superadmin = db.prepare('SELECT * FROM superadmins WHERE email = ? AND status = 1').get(email);
+    const [rows] = await pool.execute('SELECT * FROM superadmins WHERE email = ? AND status = 1', [email]);
+    const superadmin = rows[0];
     
     if (!superadmin) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -60,18 +62,18 @@ const login = async (req, res) => {
 const getDashboard = async (req, res) => {
   try {
     // Get counts for dashboard
-    const countriesCount = db.prepare('SELECT COUNT(*) as count FROM countries WHERE status = 1').get();
-    const statesCount = db.prepare('SELECT COUNT(*) as count FROM states WHERE status = 1').get();
-    const districtsCount = db.prepare('SELECT COUNT(*) as count FROM districts WHERE status = 1').get();
-    const zonesCount = db.prepare('SELECT COUNT(*) as count FROM zones WHERE status = 1').get();
+    const [countriesCountRows] = await pool.execute('SELECT COUNT(*) as count FROM countries WHERE status = 1');
+    const [statesCountRows] = await pool.execute('SELECT COUNT(*) as count FROM states WHERE status = 1');
+    const [districtsCountRows] = await pool.execute('SELECT COUNT(*) as count FROM districts WHERE status = 1');
+    const [zonesCountRows] = await pool.execute('SELECT COUNT(*) as count FROM zones WHERE status = 1');
 
     res.json({
       message: 'Dashboard data retrieved successfully!',
       dashboard: {
-        countries: countriesCount.count,
-        states: statesCount.count,
-        districts: districtsCount.count,
-        zones: zonesCount.count
+        countries: countriesCountRows[0].count,
+        states: statesCountRows[0].count,
+        districts: districtsCountRows[0].count,
+        zones: zonesCountRows[0].count
       }
     });
 
@@ -109,4 +111,4 @@ module.exports = {
   logout,
   verifyToken,
   JWT_SECRET
-}; 
+};

@@ -1,4 +1,4 @@
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 
 // Sample countries data
 const sampleCountries = [
@@ -15,23 +15,21 @@ const sampleCountries = [
 ];
 
 // Function to seed countries
-const seedCountries = () => {
+const seedCountries = async () => {
   try {
     console.log('🌱 Seeding countries...');
     
     // Check if countries already exist
-    const existingCount = db.prepare('SELECT COUNT(*) as count FROM countries').get();
+    const [rows] = await pool.query('SELECT COUNT(*) as count FROM countries');
     
-    if (existingCount.count > 0) {
-      console.log(`✅ Countries already exist (${existingCount.count} countries found)`);
+    if (rows[0].count > 0) {
+      console.log(`✅ Countries already exist (${rows[0].count} countries found)`);
       return;
     }
     
     // Insert sample countries
-    const stmt = db.prepare('INSERT INTO countries (name, code, capital) VALUES (?, ?, ?)');
-    
     for (const country of sampleCountries) {
-      stmt.run(country.name, country.code, country.capital);
+      await pool.query('INSERT INTO countries (country_name, country_code, capital) VALUES (?, ?, ?)', [country.name, country.code, country.capital]);
       console.log(`✅ Added: ${country.name} (${country.code})`);
     }
     
@@ -42,4 +40,4 @@ const seedCountries = () => {
 };
 
 // Run the seeding
-seedCountries(); 
+seedCountries();

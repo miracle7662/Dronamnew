@@ -6,10 +6,14 @@ const pool = mysql.createPool({
   user: process.env.MYSQL_USER || 'root',
   password: process.env.MYSQL_PASSWORD || 'Sudarshan@7234',
   database: process.env.MYSQL_DATABASE || 'dronam',
+  port: process.env.MYSQL_PORT || 3306,
   waitForConnections: true,
   multipleStatements: true,  // Add this line to allow multiple statements in one query
   connectionLimit: 10
 });
+
+console.log('MySQL pool created:', pool);
+
 
 // Test connection
 const testConnection = async () => {
