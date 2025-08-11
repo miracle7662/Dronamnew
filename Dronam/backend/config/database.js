@@ -1,8 +1,8 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-//const dbPath = path.join('D:', 'lodgingdb', 'lodging.db');
-const dbPath = path.join('E:', 'ReactHotelData', 'dronam.db');
+const dbPath = path.join('D:', 'lodgingdb', 'dronam.db'); //sudarshan
+//const dbPath = path.join('E:', 'ReactHotelData', 'dronam.db');
 // Create database connection
 const db = new Database(dbPath);
 
