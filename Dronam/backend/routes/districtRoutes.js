@@ -1,23 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const districtsController = require('../controllers/districtController');
+const districtController = require('../controllers/districtControllerUpdated');
 
-// Get all districts
-router.get('/', districtsController.getAllDistricts);
+// Get all districts with state information
+router.get('/', districtController.getAllDistricts);
 
 // Get districts by state
-router.get('/state/:stateId', districtsController.getDistrictsByState);
+router.get('/state/:stateId', districtController.getDistrictsByState);
 
-// Get single district
-router.get('/:id', districtsController.getDistrictById);
+// Get single district by ID
+router.get('/:id', districtController.getDistrictById);
 
 // Create new district
-router.post('/', districtsController.createDistrict);
+router.post('/', districtController.createDistrict);
 
 // Update district
-router.put('/:id', districtsController.updateDistrict);
+router.put('/:id', districtController.updateDistrict);
 
-// Delete district
-router.delete('/:id', districtsController.deleteDistrict);
+// Delete district (soft delete)
+router.delete('/:id', districtController.deleteDistrict);
+
+// Get districts count
+router.get('/count/total', districtController.getDistrictsCount);
 
 module.exports = router;

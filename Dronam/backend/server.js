@@ -44,6 +44,7 @@ app.use('/api/zones', zoneRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/hotels', hotelRoutes);
+app.use('/api/auth', require('./routes/authRoutes'));
 
 // Basic route
 app.get("/", (req, res) => {

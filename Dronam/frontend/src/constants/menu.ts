@@ -2264,10 +2264,11 @@ const AGENT_ADMIN_MENU_ITEMS: MenuItemTypes[] = [
         parentKey: 'hotels',
         roles: ['agent', 'admin'],
       },
-      {
-        key: 'addHotel',
+  
+       {
+         key: 'AddHotel',
         label: 'Add Hotel',
-        url: '/apps/add-hotel',
+        url: '/apps/AddHotel',
         parentKey: 'hotels',
         roles: ['agent', 'admin'],
       },

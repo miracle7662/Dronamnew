@@ -19,7 +19,7 @@ const Contact = React.lazy(() => import('./../views/apps/Contact'))
 const Calendar = React.lazy(() => import('./../views/apps/Calendar'))
 
 const HotelMasterPage = React.lazy(() => import('../views/apps/HotelMaster'))
-const HotelMasters = React.lazy(() => import('../views/apps/HotelMasters'))
+const HotelMasters = React.lazy(() => import('../views/apps/AddHotel'))
 
 // Superadmin
 
@@ -33,7 +33,7 @@ const States = React.lazy(() => import('./../views/apps/States')) // Updated to 
 const Districts = React.lazy(() => import('./../views/apps/Districts')) // Updated to use <Districts /> component
 const Zones = React.lazy(() => import('./../views/apps/Zones')) // Updated to use <Zones /> component
 //const ManageAgents = React.lazy(() => import('./../views/apps/ManageAgents')) // Added ManageAgents component
-const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgents')) // Added ManageAgents component
+const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgent')) // Corrected import to ManageAgent component
 const City = React.lazy(() => import('../views/apps/City')) // Updated to use <City /> component
 // const ItemGroup = React.lazy(() => import('../views/apps/ItemGroup'))
 const GuestTypemaster = React.lazy(() => import('../views/apps/GuestTypemaster'))
@@ -51,6 +51,7 @@ const FeatureMaster = React.lazy(() => import('../views/apps/Featuremaster'))
 // const KitchenGroup = React.lazy(() => import('../views/apps/KitchenGroup'))
 
 const CompanyMaster = React.lazy(() => import('../views/apps/Companymaster'))
+const AddHotel = React.lazy(() => import('../views/apps/AddHotel'))
 
 
 
@@ -368,6 +369,18 @@ const appsRoutes: RoutesProps = {
       path: '/apps/ManageAgents',
       name: 'Manage Agents',
       element: <ManageAgents />,
+      route: PrivateRoute,
+    },
+    {
+      path: '/apps/HotelMaster',
+      name: 'Hotel Master',
+      element: <HotelMasterPage />,
+      route: PrivateRoute,
+    },
+      {
+      path: '/apps/AddHotel',
+      name: 'AddHotel ',
+      element: <HotelMasterPage />,
       route: PrivateRoute,
     },
 

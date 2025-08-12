@@ -1,143 +1,119 @@
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 
 // Get all zones
-const getAllZones = (req, res) => {
+const getAllZones = async (req, res) => {
   try {
-    const zones = db.prepare(`
-      SELECT z.*, d.district_name as district_name, s.state_name as state_name
-      FROM zones z
-      LEFT JOIN districts d ON z.district_id = d.district_id
-      LEFT JOIN states s ON d.state_id = s.state_id
-      ORDER BY z.zone_name
-    `).all();
-    res.json(zones);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch zones', details: error.message });
-  }
-};
-
-// Get zones by district
-const getZonesByDistrict = (req, res) => {
-  try {
-    const zones = db.prepare(`
-      SELECT z.*, d.district_name as district_name
-      FROM zones z
-      LEFT JOIN districts d ON z.district_id = d.district_id
-      WHERE z.district_id = ?
-      ORDER BY z.zone_name
-    `).all(req.params.districtId);
-    res.json(zones);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch zones', details: error.message });
+    const [rows] = await pool.query(`
+      SELECT * FROM zones 
+      ORDER BY zone_name ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching zones:', err);
+    res.status(500).json({ error: 'Failed to fetch zones', details: err.message });
   }
 };
 
 // Get single zone by ID
-const getZoneById = (req, res) => {
+const getZoneById = async (req, res) => {
   try {
-    const zone = db.prepare(`
-      SELECT z.*, d.district_name as district_name, s.state_name as state_name
-      FROM zones z
-      LEFT JOIN districts d ON z.district_id = d.district_id
-      LEFT JOIN states s ON d.state_id = s.state_id
-      WHERE z.zone_id = ?
-    `).get(req.params.id);
-    
-    if (zone) {
-      res.json(zone);
-    } else {
-      res.status(404).json({ error: 'Zone not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch zone', details: error.message });
+    const [rows] = await pool.query(`
+      SELECT * FROM zones 
+      WHERE zone_id = ? AND status = 1
+    `, [req.params.id]);
+
+    rows.length > 0
+      ? res.json(rows[0])
+      : res.status(404).json({ error: 'Zone not found' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch zone', details: err.message });
   }
 };
 
 // Create new zone
-const createZone = (req, res) => {
-  const { zone_name, zone_code, district_id, description, status, created_by_id } = req.body;
-  
+const createZone = async (req, res) => {
+  const { zone_name, zone_code, district_id, description, status = 1, created_by_id } = req.body;
   if (!zone_name || !zone_code || !district_id) {
     return res.status(400).json({ error: 'Zone name, code, and district_id are required' });
   }
 
   try {
-    const stmt = db.prepare(`
-      INSERT INTO zones 
-      (zone_name, zone_code, district_id, description, status, created_by_id) 
+    const [result] = await pool.query(`
+      INSERT INTO zones (zone_name, zone_code, district_id, description, status, created_by_id) 
       VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    const result = stmt.run(zone_name, zone_code, district_id, description || '', status || 1, created_by_id);
+    `, [zone_name, zone_code, district_id, description, status, created_by_id]);
     
-    // Get the newly created zone with all fields
-    const newZone = db.prepare(`
-      SELECT z.*, d.district_name as district_name, s.state_name as state_name
-      FROM zones z
-      LEFT JOIN districts d ON z.district_id = d.district_id
-      LEFT JOIN states s ON d.state_id = s.state_id
-      WHERE z.zone_id = ?
-    `).get(result.lastInsertRowid);
-    
-    res.status(201).json({
-      message: 'Zone created successfully!',
-      zone: newZone
+    const [newZone] = await pool.query(`
+      SELECT * FROM zones WHERE zone_id = ?
+    `, [result.insertId]);
+
+    if (newZone.length === 0) {
+      return res.status(404).json({ error: 'Zone not found after creation' });
+    }
+
+    res.status(201).json({ 
+      message: 'Zone created successfully!', 
+      zone: newZone[0] 
     });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create zone', details: error.message });
+  } catch (err) {
+    const isUniqueError = err.code === 'ER_DUP_ENTRY';
+    res.status(isUniqueError ? 400 : 500).json({ 
+      error: isUniqueError ? 'Zone code must be unique' : 'Failed to create zone', 
+      details: err.message 
+    });
   }
 };
 
 // Update zone
-const updateZone = (req, res) => {
-  const { zone_name, zone_code, district_id, description, status, updated_by_id } = req.body;
+const updateZone = async (req, res) => {
+  const { zone_name, zone_code, district_id, description, status = 1, updated_by_id } = req.body;
   const { id } = req.params;
-
   if (!zone_name || !zone_code || !district_id) {
     return res.status(400).json({ error: 'Zone name, code, and district_id are required' });
   }
 
   try {
-    const stmt = db.prepare(`
+    const [result] = await pool.query(`
       UPDATE zones 
-      SET zone_name = ?, zone_code = ?, district_id = ?, description = ?, status = ?,
+      SET zone_name = ?, zone_code = ?, district_id = ?, description = ?, status = ?, 
           updated_by_id = ?, updated_date = CURRENT_TIMESTAMP 
       WHERE zone_id = ?
-    `);
-    const result = stmt.run(zone_name, zone_code, district_id, description || '', status || 1, updated_by_id, id);
-    
-    if (result.changes > 0) {
-      res.json({ message: 'Zone updated successfully!' });
-    } else {
-      res.status(404).json({ error: 'Zone not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update zone', details: error.message });
+    `, [zone_name, zone_code, district_id, description, status, updated_by_id, id]);
+
+    result.affectedRows > 0
+      ? res.json({ message: 'Zone updated successfully!' })
+      : res.status(404).json({ error: 'Zone not found' });
+  } catch (err) {
+    const isUniqueError = err.code === 'ER_DUP_ENTRY';
+    res.status(isUniqueError ? 400 : 500).json({ 
+      error: isUniqueError ? 'Zone code must be unique' : 'Failed to update zone', 
+      details: err.message 
+    });
   }
 };
 
-// Delete zone (soft delete)
-const deleteZone = (req, res) => {
+// Delete zone
+const deleteZone = async (req, res) => {
   try {
-    const stmt = db.prepare(`
-      UPDATE zones 
-      SET status = 0, updated_date = CURRENT_TIMESTAMP 
+    const [result] = await pool.query(`
+      DELETE FROM zones 
       WHERE zone_id = ?
-    `);
-    const result = stmt.run(req.params.id);
-    
-    if (result.changes > 0) {
-      res.json({ message: 'Zone deleted successfully!' });
-    } else {
-      res.status(404).json({ error: 'Zone not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete zone', details: error.message });
+    `, [req.params.id]);
+
+    result.affectedRows > 0
+      ? res.json({ message: 'Zone deleted successfully!' })
+      : res.status(404).json({ error: 'Zone not found' });
+  } catch (err) {
+    const isForeignKeyError = err.code === 'ER_ROW_IS_REFERENCED';
+    res.status(isForeignKeyError ? 400 : 500).json({ 
+      error: isForeignKeyError ? 'Cannot delete zone: it has associated records' : 'Failed to delete zone', 
+      details: err.message 
+    });
   }
 };
 
 module.exports = {
   getAllZones,
-  getZonesByDistrict,
   getZoneById,
   createZone,
   updateZone,

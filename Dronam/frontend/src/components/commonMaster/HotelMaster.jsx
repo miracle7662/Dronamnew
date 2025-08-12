@@ -11,9 +11,7 @@ import {
   Alert,
   Badge,
   InputGroup,
-  Pagination,
-  Tab,
-  Tabs
+  Pagination
 } from 'react-bootstrap';
 import { 
   Plus, 
@@ -21,14 +19,9 @@ import {
   Edit, 
   Trash2, 
   Building,
-  MapPin,
   Phone,
-  Mail,
-  Clock,
-  Star,
-  Users,
-  Flag,
-  Home
+  MapPin,
+  Flag
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthContext } from '@/common/context/useAuthContext';
@@ -49,13 +42,12 @@ const HotelMaster = () => {
   const [itemsPerPage] = useState(10);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [hotelToDelete, setHotelToDelete] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
 
   const [formData, setFormData] = useState({
-    hotel_name: '',
-    hotel_type: '',
     email: '',
     password: '',
+    hotel_name: '',
+    hotel_type: '',
     address: '',
     phone: '',
     country_id: '',
@@ -67,10 +59,8 @@ const HotelMaster = () => {
     aadhar_no: '',
     owner_name: '',
     Owner_mobile: '',
-    hotel_timeMorningStart: '',
-    hotel_timeMorningEnd: '',
-    hotel_timeEveningStart: '',
-    hotel_timeEveningEnd: '',
+    hotel_timeMorning: '',
+    hotel_timeEvening: '',
     status: 1,
     created_by_id: null,
     masteruserid: null
@@ -152,29 +142,15 @@ const HotelMaster = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
     if (!formData.hotel_name.trim()) {
       newErrors.hotel_name = 'Hotel name is required';
     }
-    
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
     }
-    
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = 'Phone is required';
     }
-    
-    if (!formData.country_id) {
-      newErrors.country_id = 'Country is required';
-    }
-    
-    if (!formData.state_id) {
-      newErrors.state_id = 'State is required';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -182,32 +158,19 @@ const HotelMaster = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
     setLoading(true);
-    
     try {
       const userId = user?.id || 1;
-      const hotel_timeMorning = formData.hotel_timeMorningStart && formData.hotel_timeMorningEnd
-        ? `${formData.hotel_timeMorningStart} to ${formData.hotel_timeMorningEnd}`
-        : '';
-      const hotel_timeEvening = formData.hotel_timeEveningStart && formData.hotel_timeEveningEnd
-        ? `${formData.hotel_timeEveningStart} to ${formData.hotel_timeEveningEnd}`
-        : '';
       if (editingHotel) {
         await axios.put(`http://localhost:3001/api/hotels/${editingHotel.hotelid}`, {
           ...formData,
-          hotel_timeMorning,
-          hotel_timeEvening,
           updated_by_id: userId
         });
         await loadHotels();
       } else {
         const response = await axios.post('http://localhost:3001/api/hotels', {
           ...formData,
-          hotel_timeMorning,
-          hotel_timeEvening,
-          created_by_id: userId,
-          masteruserid: userId
+          created_by_id: userId
         });
         if (response.data.hotel) {
           setHotels(prev => [response.data.hotel, ...prev]);
@@ -223,29 +186,27 @@ const HotelMaster = () => {
 
   const handleEdit = (hotel) => {
     setEditingHotel(hotel);
-    const [morningStart, morningEnd] = (hotel.hotel_timeMorning || '').split(' to ');
-    const [eveningStart, eveningEnd] = (hotel.hotel_timeEvening || '').split(' to ');
     setFormData({
-      hotel_name: hotel.hotel_name || '',
-      hotel_type: hotel.hotel_type || '',
-      email: hotel.email || '',
-      password: hotel.password || '',
-      address: hotel.address || '',
-      phone: hotel.phone || '',
-      country_id: hotel.country_id || '',
-      state_id: hotel.state_id || '',
-      district_id: hotel.district_id || '',
-      zone_id: hotel.zone_id || '',
-      gst_no: hotel.gst_no || '',
-      pan_no: hotel.pan_no || '',
-      aadhar_no: hotel.aadhar_no || '',
-      owner_name: hotel.owner_name || '',
-      Owner_mobile: hotel.Owner_mobile || '',
-      hotel_timeMorningStart: morningStart || '',
-      hotel_timeMorningEnd: morningEnd || '',
-      hotel_timeEveningStart: eveningStart || '',
-      hotel_timeEveningEnd: eveningEnd || '',
-      status: hotel.status !== undefined ? hotel.status : 1
+      email: hotel.email,
+      password: hotel.password,
+      hotel_name: hotel.hotel_name,
+      hotel_type: hotel.hotel_type,
+      address: hotel.address,
+      phone: hotel.phone,
+      country_id: hotel.country_id,
+      state_id: hotel.state_id,
+      district_id: hotel.district_id,
+      zone_id: hotel.zone_id,
+      gst_no: hotel.gst_no,
+      pan_no: hotel.pan_no,
+      aadhar_no: hotel.aadhar_no,
+      owner_name: hotel.owner_name,
+      Owner_mobile: hotel.Owner_mobile,
+      hotel_timeMorning: hotel.hotel_timeMorning,
+      hotel_timeEvening: hotel.hotel_timeEvening,
+      status: hotel.status !== undefined ? hotel.status : 1,
+      created_by_id: hotel.created_by_id,
+      masteruserid: hotel.masteruserid
     });
     setShowModal(true);
   };
@@ -272,10 +233,10 @@ const HotelMaster = () => {
     setShowModal(false);
     setEditingHotel(null);
     setFormData({
-      hotel_name: '',
-      hotel_type: '',
       email: '',
       password: '',
+      hotel_name: '',
+      hotel_type: '',
       address: '',
       phone: '',
       country_id: '',
@@ -297,33 +258,19 @@ const HotelMaster = () => {
   };
 
   const filteredHotels = hotels.filter(hotel =>
-    hotel.hotel_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    hotel.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    hotel.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    hotel.address?.toLowerCase().includes(searchTerm.toLowerCase())
+    hotel.hotel_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    hotel.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    hotel.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (hotel.country_name && hotel.country_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (hotel.state_name && hotel.state_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (hotel.district_name && hotel.district_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (hotel.zone_name && hotel.zone_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-
-  const getFilteredHotelsByStatus = (status) => {
-    return filteredHotels.filter(hotel => 
-      status === 'all' ? true : hotel.status === (status === 'active' ? 1 : 0)
-    );
-  };
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentHotels = getFilteredHotelsByStatus(activeTab).slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(getFilteredHotelsByStatus(activeTab).length / itemsPerPage);
-
-  const getHotelTypeBadge = (type) => {
-    const types = {
-      'luxury': 'warning',
-      'budget': 'success',
-      'boutique': 'info',
-      'resort': 'primary',
-      'business': 'secondary'
-    };
-    return types[type?.toLowerCase()] || 'secondary';
-  };
+  const currentHotels = filteredHotels.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredHotels.length / itemsPerPage);
 
   return (
     <Container fluid className="py-4">
@@ -373,20 +320,6 @@ const HotelMaster = () => {
 
       <Card>
         <Card.Body className="p-0">
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(k) => {
-              setActiveTab(k);
-              setCurrentPage(1);
-            }}
-            className="mb-0"
-            fill
-          >
-            <Tab eventKey="all" title={`All (${getFilteredHotelsByStatus('all').length})`} />
-            <Tab eventKey="active" title={`Active (${getFilteredHotelsByStatus('active').length})`} />
-            <Tab eventKey="inactive" title={`Inactive (${getFilteredHotelsByStatus('inactive').length})`} />
-          </Tabs>
-
           {loading ? (
             <div className="text-center py-5">
               <div className="spinner-border" role="status">
@@ -400,12 +333,17 @@ const HotelMaster = () => {
                   <thead className="table-light sticky-top bg-white" style={{ zIndex: 1 }}>
                     <tr>
                       <th style={{ minWidth: '50px' }}>#</th>
-                      <th style={{ minWidth: '200px' }}>Hotel</th>
-                      <th style={{ minWidth: '150px' }}>Type</th>
-                      <th style={{ minWidth: '200px' }}>Contact</th>
-                      <th style={{ minWidth: '250px' }}>Address</th>
-                      <th style={{ minWidth: '150px' }}>Location</th>
-                      <th style={{ minWidth: '100px' }}>Status</th>
+                      <th style={{ minWidth: '200px' }}>Hotel Name</th>
+                      <th style={{ minWidth: '150px' }}>Email</th>
+                      <th style={{ minWidth: '150px' }}>Phone</th>
+                      <th style={{ minWidth: '150px' }}>Country</th>
+                      <th style={{ minWidth: '150px' }}>State</th>
+                      <th style={{ minWidth: '150px' }}>District</th>
+                      <th style={{ minWidth: '150px' }}>Zone</th>
+                      <th style={{ minWidth: '200px' }}>Address</th>
+                      <th style={{ minWidth: '150px' }}>Owner Name</th>
+                      <th style={{ minWidth: '150px' }}>Owner Mobile</th>
+                      <th style={{ minWidth: '150px' }}>Status</th>
                       <th style={{ minWidth: '120px' }}>Actions</th>
                     </tr>
                   </thead>
@@ -414,50 +352,17 @@ const HotelMaster = () => {
                       <tr key={hotel.hotelid}>
                         <td>{indexOfFirstItem + index + 1}</td>
                         <td>
-                          <div className="d-flex align-items-center">
-                            <div className="me-2">
-                              <Building size={16} className="text-muted" />
-                            </div>
-                            <div>
-                              <strong>{hotel.hotel_name}</strong>
-                              <br />
-                              <small className="text-muted">{hotel.owner_name}</small>
-                            </div>
-                          </div>
+                          <strong>{hotel.hotel_name}</strong>
                         </td>
-                        <td>
-                          <Badge bg={getHotelTypeBadge(hotel.hotel_type)} className="text-capitalize">
-                            {hotel.hotel_type || 'N/A'}
-                          </Badge>
-                        </td>
-                        <td>
-                          <div>
-                            <Mail size={14} className="text-muted me-1" />
-                            {hotel.email}
-                          </div>
-                          <div>
-                            <Phone size={14} className="text-muted me-1" />
-                            {hotel.phone}
-                          </div>
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center">
-                            <MapPin size={14} className="text-muted me-1" />
-                            <span className="text-truncate" style={{ maxWidth: '200px' }}>
-                              {hotel.address}
-                            </span>
-                          </div>
-                        </td>
-                        <td>
-                          <div>
-                            <Flag size={14} className="text-muted me-1" />
-                            {hotel.country_name}
-                          </div>
-                          <div>
-                            <Home size={14} className="text-muted me-1" />
-                            {hotel.state_name}
-                          </div>
-                        </td>
+                        <td>{hotel.email}</td>
+                        <td>{hotel.phone}</td>
+                        <td>{hotel.country_name || <span className="text-muted">-</span>}</td>
+                        <td>{hotel.state_name || <span className="text-muted">-</span>}</td>
+                        <td>{hotel.district_name || <span className="text-muted">-</span>}</td>
+                        <td>{hotel.zone_name || <span className="text-muted">-</span>}</td>
+                        <td>{hotel.address || <span className="text-muted">-</span>}</td>
+                        <td>{hotel.owner_name || <span className="text-muted">-</span>}</td>
+                        <td>{hotel.Owner_mobile || <span className="text-muted">-</span>}</td>
                         <td>
                           <Badge bg={hotel.status === 1 ? 'success' : 'secondary'}>
                             {hotel.status === 1 ? 'Active' : 'Inactive'}
@@ -489,62 +394,47 @@ const HotelMaster = () => {
                 </Table>
               </div>
 
-              {currentHotels.length === 0 && (
-                <div className="text-center py-5">
-                  <Building size={48} className="text-muted mb-3" />
-                  <h5 className="text-muted">No hotels found</h5>
-                  <p className="text-muted">
-                    {searchTerm ? 'Try adjusting your search terms' : 'Add your first hotel to get started'}
-                  </p>
-                </div>
+              {totalPages > 1 && (
+                <Row className="mt-4">
+                  <Col className="d-flex justify-content-center">
+                    <Pagination>
+                      <Pagination.First 
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                      />
+                      <Pagination.Prev 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                      />
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <Pagination.Item
+                          key={page}
+                          active={page === currentPage}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Pagination.Item>
+                      ))}
+                      <Pagination.Next 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                      />
+                      <Pagination.Last 
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                      />
+                    </Pagination>
+                  </Col>
+                </Row>
               )}
             </>
           )}
         </Card.Body>
       </Card>
 
-      {totalPages > 1 && (
-        <Row className="mt-4">
-          <Col className="d-flex justify-content-center">
-            <Pagination>
-              <Pagination.First 
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              />
-              <Pagination.Prev 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              />
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Pagination.Item
-                  key={page}
-                  active={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Pagination.Item>
-              ))}
-              
-              <Pagination.Next 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              />
-              <Pagination.Last 
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              />
-            </Pagination>
-          </Col>
-        </Row>
-      )}
-
-      {/* Add/Edit Modal */}
-      <Modal show={showModal} onHide={handleCloseModal} size="xl">
+      <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>
-            {editingHotel ? 'Edit Hotel' : 'Add New Hotel'}
-          </Modal.Title>
+          <Modal.Title>{editingHotel ? 'Edit Hotel' : 'Add New Hotel'}</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
@@ -567,26 +457,6 @@ const HotelMaster = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Hotel Type</Form.Label>
-                  <Form.Select
-                    name="hotel_type"
-                    value={formData.hotel_type}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Select Type</option>
-                    <option value="luxury">Luxury</option>
-                    <option value="budget">Budget</option>
-                    <option value="boutique">Boutique</option>
-                    <option value="resort">Resort</option>
-                    <option value="business">Business</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
                   <Form.Label>Email *</Form.Label>
                   <Form.Control
                     type="email"
@@ -594,33 +464,20 @@ const HotelMaster = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     isInvalid={!!errors.email}
-                    placeholder="Enter email address"
+                    placeholder="Enter email"
                   />
                   <Form.Control.Feedback type="invalid">
                     {errors.email}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Password</Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Enter password"
-                  />
-                </Form.Group>
-              </Col>
             </Row>
-
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Phone *</Form.Label>
                   <Form.Control
-                    type="tel"
+                    type="text"
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
@@ -634,43 +491,11 @@ const HotelMaster = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Owner Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="owner_name"
-                    value={formData.owner_name}
-                    onChange={handleInputChange}
-                    placeholder="Enter owner name"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={12}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Address</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="Enter complete address"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Country *</Form.Label>
+                  <Form.Label>Country</Form.Label>
                   <Form.Select
                     name="country_id"
                     value={formData.country_id}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.country_id}
                   >
                     <option value="">Select Country</option>
                     {countries.map(country => (
@@ -679,35 +504,27 @@ const HotelMaster = () => {
                       </option>
                     ))}
                   </Form.Select>
-                  <Form.Control.Feedback type="invalid">
-                    {errors.country_id}
-                  </Form.Control.Feedback>
                 </Form.Group>
               </Col>
+            </Row>
+            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>State *</Form.Label>
+                  <Form.Label>State</Form.Label>
                   <Form.Select
                     name="state_id"
                     value={formData.state_id}
                     onChange={handleInputChange}
-                    isInvalid={!!errors.state_id}
                   >
                     <option value="">Select State</option>
-                    {states.filter(state => state.country_id == formData.country_id).map(state => (
+                    {states.map(state => (
                       <option key={state.state_id} value={state.state_id}>
                         {state.state_name}
                       </option>
                     ))}
                   </Form.Select>
-                  <Form.Control.Feedback type="invalid">
-                    {errors.state_id}
-                  </Form.Control.Feedback>
                 </Form.Group>
               </Col>
-            </Row>
-
-            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>District</Form.Label>
@@ -717,7 +534,7 @@ const HotelMaster = () => {
                     onChange={handleInputChange}
                   >
                     <option value="">Select District</option>
-                    {districts.filter(district => district.state_id == formData.state_id).map(district => (
+                    {districts.map(district => (
                       <option key={district.district_id} value={district.district_id}>
                         {district.district_name}
                       </option>
@@ -725,6 +542,8 @@ const HotelMaster = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
+            </Row>
+            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Zone</Form.Label>
@@ -742,12 +561,9 @@ const HotelMaster = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-            </Row>
-
-            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>GST Number</Form.Label>
+                  <Form.Label>GST No</Form.Label>
                   <Form.Control
                     type="text"
                     name="gst_no"
@@ -757,9 +573,11 @@ const HotelMaster = () => {
                   />
                 </Form.Group>
               </Col>
+            </Row>
+            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>PAN Number</Form.Label>
+                  <Form.Label>PAN No</Form.Label>
                   <Form.Control
                     type="text"
                     name="pan_no"
@@ -769,12 +587,9 @@ const HotelMaster = () => {
                   />
                 </Form.Group>
               </Col>
-            </Row>
-
-            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Aadhar Number</Form.Label>
+                  <Form.Label>Aadhar No</Form.Label>
                   <Form.Control
                     type="text"
                     name="aadhar_no"
@@ -784,68 +599,98 @@ const HotelMaster = () => {
                   />
                 </Form.Group>
               </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Owner Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="owner_name"
+                    value={formData.owner_name}
+                    onChange={handleInputChange}
+                    placeholder="Enter owner name"
+                  />
+                </Form.Group>
+              </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Owner Mobile</Form.Label>
                   <Form.Control
-                    type="tel"
+                    type="text"
                     name="Owner_mobile"
                     value={formData.Owner_mobile}
                     onChange={handleInputChange}
-                    placeholder="Enter owner mobile"
+                    placeholder="Enter owner mobile number"
                   />
                 </Form.Group>
               </Col>
             </Row>
-
             <Row>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Morning Time Start</Form.Label>
-                <Form.Control
-                  type="time"
-                  name="hotel_timeMorningStart"
-                  value={formData.hotel_timeMorningStart}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Morning Time End</Form.Label>
-                <Form.Control
-                  type="time"
-                  name="hotel_timeMorningEnd"
-                  value={formData.hotel_timeMorningEnd}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Evening Time Start</Form.Label>
-                <Form.Control
-                  type="time"
-                  name="hotel_timeEveningStart"
-                  value={formData.hotel_timeEveningStart}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>Evening Time End</Form.Label>
-                <Form.Control
-                  type="time"
-                  name="hotel_timeEveningEnd"
-                  value={formData.hotel_timeEveningEnd}
-                  onChange={handleInputChange}
-                />
-              </Form.Group>
-            </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Hotel Time Morning</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="hotel_timeMorning"
+                    value={formData.hotel_timeMorning}
+                    onChange={handleInputChange}
+                    placeholder="Enter morning time"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Hotel Time Evening</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="hotel_timeEvening"
+                    value={formData.hotel_timeEvening}
+                    onChange={handleInputChange}
+                    placeholder="Enter evening time"
+                  />
+                </Form.Group>
+              </Col>
             </Row>
-
             <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Hotel Type</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="hotel_type"
+                    value={formData.hotel_type}
+                    onChange={handleInputChange}
+                    placeholder="Enter hotel type"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Address</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="Enter address"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Enter password"
+                  />
+                </Form.Group>
+              </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Status</Form.Label>
@@ -865,18 +710,13 @@ const HotelMaster = () => {
             <Button variant="secondary" onClick={handleCloseModal}>
               Cancel
             </Button>
-            <Button 
-              variant="primary" 
-              type="submit"
-              disabled={loading}
-            >
+            <Button variant="primary" type="submit" disabled={loading}>
               {loading ? 'Saving...' : (editingHotel ? 'Update' : 'Save')}
             </Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Confirm Delete</Modal.Title>

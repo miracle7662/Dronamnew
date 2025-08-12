@@ -1,138 +1,119 @@
-const { db } = require('../config/database');
+const { pool } = require('../config/database');
 
 // Get all districts
-const getAllDistricts = (req, res) => {
+const getAllDistricts = async (req, res) => {
   try {
-    const districts = db.prepare(`
-      SELECT d.*, s.state_name as state_name 
-      FROM districts d 
-      LEFT JOIN states s ON d.state_id = s.state_id 
-      ORDER BY d.district_name
-    `).all();
-    res.json(districts);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch districts', details: error.message });
-  }
-};
-
-// Get districts by state
-const getDistrictsByState = (req, res) => {
-  try {
-    const districts = db.prepare(`
+    const [rows] = await pool.query(`
       SELECT * FROM districts 
-      WHERE state_id = ? 
-      ORDER BY district_name
-    `).all(req.params.stateId);
-    res.json(districts);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch districts', details: error.message });
+      ORDER BY district_name ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching districts:', err);
+    res.status(500).json({ error: 'Failed to fetch districts', details: err.message });
   }
 };
 
 // Get single district by ID
-const getDistrictById = (req, res) => {
+const getDistrictById = async (req, res) => {
   try {
-    const district = db.prepare(`
-      SELECT d.*, s.state_name as state_name 
-      FROM districts d 
-      LEFT JOIN states s ON d.state_id = s.state_id 
-      WHERE d.district_id = ?
-    `).get(req.params.id);
-    
-    if (district) {
-      res.json(district);
-    } else {
-      res.status(404).json({ error: 'District not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch district', details: error.message });
+    const [rows] = await pool.query(`
+      SELECT * FROM districts 
+      WHERE district_id = ? AND status = 1
+    `, [req.params.id]);
+
+    rows.length > 0
+      ? res.json(rows[0])
+      : res.status(404).json({ error: 'District not found' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch district', details: err.message });
   }
 };
 
 // Create new district
-const createDistrict = (req, res) => {
-  const { district_name, district_code, state_id, description, status, created_by_id } = req.body;
-  
+const createDistrict = async (req, res) => {
+  const { district_name, district_code, state_id, description, status = 1, created_by_id } = req.body;
   if (!district_name || !district_code || !state_id) {
     return res.status(400).json({ error: 'District name, code, and state_id are required' });
   }
 
   try {
-    const stmt = db.prepare(`
-      INSERT INTO districts 
-      (district_name, district_code, state_id, description, status, created_by_id) 
+    const [result] = await pool.query(`
+      INSERT INTO districts (district_name, district_code, state_id, description, status, created_by_id) 
       VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    const result = stmt.run(district_name, district_code, state_id, description || '', status || 1, created_by_id);
+    `, [district_name, district_code, state_id, description, status, created_by_id]);
     
-    // Get the newly created district with all fields
-    const newDistrict = db.prepare(`
-      SELECT d.*, s.state_name as state_name 
-      FROM districts d 
-      LEFT JOIN states s ON d.state_id = s.state_id 
-      WHERE d.district_id = ?
-    `).get(result.lastInsertRowid);
-    
-    res.status(201).json({
-      message: 'District created successfully!',
-      district: newDistrict
+    const [newDistrict] = await pool.query(`
+      SELECT * FROM districts WHERE district_id = ?
+    `, [result.insertId]);
+
+    if (newDistrict.length === 0) {
+      return res.status(404).json({ error: 'District not found after creation' });
+    }
+
+    res.status(201).json({ 
+      message: 'District created successfully!', 
+      district: newDistrict[0] 
     });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create district', details: error.message });
+  } catch (err) {
+    const isUniqueError = err.code === 'ER_DUP_ENTRY';
+    res.status(isUniqueError ? 400 : 500).json({ 
+      error: isUniqueError ? 'District code must be unique' : 'Failed to create district', 
+      details: err.message 
+    });
   }
 };
 
 // Update district
-const updateDistrict = (req, res) => {
-  const { district_name, district_code, state_id, description, status, updated_by_id } = req.body;
+const updateDistrict = async (req, res) => {
+  const { district_name, district_code, state_id, description, status = 1, updated_by_id } = req.body;
   const { id } = req.params;
-
   if (!district_name || !district_code || !state_id) {
     return res.status(400).json({ error: 'District name, code, and state_id are required' });
   }
 
   try {
-    const stmt = db.prepare(`
+    const [result] = await pool.query(`
       UPDATE districts 
-      SET district_name = ?, district_code = ?, state_id = ?, description = ?, status = ?,
+      SET district_name = ?, district_code = ?, state_id = ?, description = ?, status = ?, 
           updated_by_id = ?, updated_date = CURRENT_TIMESTAMP 
       WHERE district_id = ?
-    `);
-    const result = stmt.run(district_name, district_code, state_id, description || '', status || 1, updated_by_id, id);
-    
-    if (result.changes > 0) {
-      res.json({ message: 'District updated successfully!' });
-    } else {
-      res.status(404).json({ error: 'District not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update district', details: error.message });
+    `, [district_name, district_code, state_id, description, status, updated_by_id, id]);
+
+    result.affectedRows > 0
+      ? res.json({ message: 'District updated successfully!' })
+      : res.status(404).json({ error: 'District not found' });
+  } catch (err) {
+    const isUniqueError = err.code === 'ER_DUP_ENTRY';
+    res.status(isUniqueError ? 400 : 500).json({ 
+      error: isUniqueError ? 'District code must be unique' : 'Failed to update district', 
+      details: err.message 
+    });
   }
 };
 
-// Delete district (soft delete)
-const deleteDistrict = (req, res) => {
+// Delete district
+const deleteDistrict = async (req, res) => {
   try {
-    const stmt = db.prepare(`
-      UPDATE districts 
-      SET status = 0, updated_date = CURRENT_TIMESTAMP 
+    const [result] = await pool.query(`
+      DELETE FROM districts 
       WHERE district_id = ?
-    `);
-    const result = stmt.run(req.params.id);
-    
-    if (result.changes > 0) {
-      res.json({ message: 'District deleted successfully!' });
-    } else {
-      res.status(404).json({ error: 'District not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete district', details: error.message });
+    `, [req.params.id]);
+
+    result.affectedRows > 0
+      ? res.json({ message: 'District deleted successfully!' })
+      : res.status(404).json({ error: 'District not found' });
+  } catch (err) {
+    const isForeignKeyError = err.code === 'ER_ROW_IS_REFERENCED';
+    res.status(isForeignKeyError ? 400 : 500).json({ 
+      error: isForeignKeyError ? 'Cannot delete district: it has associated zones' : 'Failed to delete district', 
+      details: err.message 
+    });
   }
 };
 
 module.exports = {
   getAllDistricts,
-  getDistrictsByState,
   getDistrictById,
   createDistrict,
   updateDistrict,
