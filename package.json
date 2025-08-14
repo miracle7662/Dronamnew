@@ -13,10 +13,19 @@
     "start": "npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["lodging", "management", "react", "nodejs", "fullstack"],
+  "keywords": [
+    "lodging",
+    "management",
+    "react",
+    "nodejs",
+    "fullstack"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "concurrently": "^9.2.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5"
   }
 }

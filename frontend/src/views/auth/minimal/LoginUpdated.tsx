@@ -57,51 +57,20 @@ const Login = () => {
       try {
         console.log('📡 Making API call to login...')
         
-        // Determine API endpoint based on user type
-        let apiEndpoint = ''
-        let userData: any = {}
+        // Use unified login endpoint for all user types
+        const apiEndpoint = 'http://localhost:3001/api/auth/login'
+        const response = await axios.post(apiEndpoint, { 
+          email, 
+          password, 
+          type: userType === 'admin' ? 'agent' : userType 
+        })
         
-        switch (userType) {
-          case 'superadmin':
-            apiEndpoint = 'http://localhost:3001/api/superadmin/login'
-            const superadminResponse = await axios.post(apiEndpoint, { email, password })
-            userData = {
-              id: superadminResponse.data.superadmin.id,
-              email: superadminResponse.data.superadmin.email,
-              name: superadminResponse.data.superadmin.name,
-              role: 'superadmin',
-              token: superadminResponse.data.token
-            }
-            break
-            
-          case 'agent':
-          case 'admin':
-            apiEndpoint = 'http://localhost:3001/api/agents/login'
-            const agentResponse = await axios.post(apiEndpoint, { email, password })
-            userData = {
-              id: agentResponse.data.agent.id,
-              email: agentResponse.data.agent.email,
-              name: agentResponse.data.agent.name,
-              role: agentResponse.data.agent.role,
-              token: agentResponse.data.token
-            }
-            break
-            
-          case 'hotel':
-          case 'admin':
-            apiEndpoint = 'http://localhost:3001/api/hotels/login'
-            const hotelResponse = await axios.post(apiEndpoint, { email, password })
-            userData = {
-              id: hotelResponse.data.user.id, // Updated to match backend response
-              email: hotelResponse.data.user.email,
-              name: hotelResponse.data.user.name,
-              role: 'hotel',
-              token: hotelResponse.data.token
-            }
-            break
-            
-          default:
-            throw new Error('Invalid user type')
+        const userData = {
+          id: response.data.user.id || response.data.user.hotelid,
+          email: response.data.user.email,
+          name: response.data.user.name || response.data.user.hotel_name || response.data.user.username,
+          role: userType,
+          token: response.data.token
         }
         
         console.log('✅ Login successful!', userData)

@@ -5,116 +5,123 @@ const { sendWelcomeEmail } = require('../utils/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Login hotel
+// Hotel Login - Following same pattern as superadmin and agent
 const login = async (req, res) => {
-  console.log('Login attempt:', req.body); // Log incoming request data
+    console.log("Login attempt:", req.body); // Debugging log
   try {
     const { email, password } = req.body;
     
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email and password are required' 
+      });
     }
 
-    const [rows] = await pool.query('SELECT * FROM hotels WHERE email = ? AND status = 1', [email]);
+    // Find hotel by email and ensure it's active
+    const [rows] = await pool.execute(
+      'SELECT * FROM hotels WHERE email = ? AND status = 1', 
+      [email]
+    );
     
     if (rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      });
     }
 
     const hotel = rows[0];
 
+    // Verify password
     const isPasswordValid = await bcrypt.compare(password, hotel.password);
     
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      });
     }
 
+    // Generate JWT token
     const token = jwt.sign(
       { 
         id: hotel.hotelid, 
         email: hotel.email, 
-        hotel_name: hotel.hotel_name 
-      }, 
-      JWT_SECRET, 
+        name: hotel.hotel_name,
+        role: 'hotel'
+      },
+      JWT_SECRET,
       { expiresIn: '24h' }
     );
 
+    // Remove password from response
     const { password: _, ...hotelWithoutPassword } = hotel;
-    
-    res.json({
-      message: 'Login successful!',
-      hotel: hotelWithoutPassword,
-      token
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed', details: error.message });
-  }
-};
 
-const getHotelByEmail = async (req, res) => {
-  try {
-    const { email } = req.params;
-    const [rows] = await pool.query('SELECT * FROM hotels WHERE email = ?', [email]);
-    
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-    
-    const hotel = rows[0];
-    const { password: _, ...hotelWithoutPassword } = hotel;
-    
-    res.json(hotelWithoutPassword);
+    res.json({
+      success: true,
+      message: 'Hotel login successful!',
+      token,
+      user: {
+        id: hotel.hotelid,
+        email: hotel.email,
+        name: hotel.hotel_name,
+        role: 'hotel'
+      }
+    });
+
   } catch (error) {
-    console.error('Error fetching hotel by email:', error);
-    res.status(500).json({ error: 'Failed to fetch hotel', details: error.message });
+    console.error('Hotel login error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error during hotel login',
+      details: error.message 
+    });
   }
 };
 
 // Get all hotels
 const getAllHotels = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const query = `
       SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
+             c.country_name, 
+             s.state_name, 
+             d.district_name, 
+             z.zone_name 
       FROM hotels h
       LEFT JOIN countries c ON h.country_id = c.country_id
       LEFT JOIN states s ON h.state_id = s.state_id
       LEFT JOIN districts d ON h.district_id = d.district_id
       LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      ORDER BY h.hotel_name ASC
-    `);
+      ORDER BY h.hotelid DESC
+    `;
+    const [rows] = await pool.query(query);
     res.json(rows);
   } catch (error) {
     console.error('Error fetching hotels:', error);
-    res.status(500).json({ error: 'Failed to fetch hotels', details: error.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// Get single hotel by ID
+// Get hotel by ID
 const getHotelById = async (req, res) => {
+  const { id } = req.params;
   try {
-    const { id } = req.params;
-    const [rows] = await pool.query(`
+    const query = `
       SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
+             c.country_name, 
+             s.state_name, 
+             d.district_name, 
+             z.zone_name 
       FROM hotels h
       LEFT JOIN countries c ON h.country_id = c.country_id
       LEFT JOIN states s ON h.state_id = s.state_id
       LEFT JOIN districts d ON h.district_id = d.district_id
       LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
       WHERE h.hotelid = ?
-    `, [id]);
+    `;
+    const [rows] = await pool.query(query, [id]);
     
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Hotel not found' });
@@ -123,380 +130,302 @@ const getHotelById = async (req, res) => {
     res.json(rows[0]);
   } catch (error) {
     console.error('Error fetching hotel:', error);
-    res.status(500).json({ error: 'Failed to fetch hotel', details: error.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // Create new hotel
 const createHotel = async (req, res) => {
-  try {
-    const { 
-      email, 
-      password, 
-      hotel_name, 
-      hotel_type, 
-      address, 
-      phone, 
-      country_id, 
-      state_id, 
-      district_id, 
-      zone_id, 
-      gst_no, 
-      pan_no, 
-      aadhar_no, 
-      owner_name, 
-      owner_mobile, 
-      hotel_timeMorning, 
-      hotel_timeEvening, 
-      status = 1, 
-      created_by_id
-    } = req.body;
-    
-    if (!email || !password || !hotel_name || !phone) {
-      return res.status(400).json({ error: 'Hotel name, email, phone, and password are required' });
-    }
+  const {
+    email,
+    password,
+    hotel_name,
+    hotel_type,
+    role = 'hotel',
+    address,
+    phone,
+    country_id,
+    state_id,
+    district_id,
+    zone_id,
+    gst_no,
+    pan_no,
+    aadhar_no,
+    owner_name,
+    owner_mobile,
+    hotel_timeMorning,
+    hotel_timeEvening,
+    status = 1,
+    created_by_id,
+    masteruserid
+  } = req.body;
 
+  try {
     // Check if email already exists
-    const [existingRows] = await pool.query('SELECT hotelid FROM hotels WHERE email = ?', [email]);
-    if (existingRows.length > 0) {
-      return res.status(400).json({ error: 'Email already exists' });
+    const emailCheckQuery = 'SELECT * FROM hotels WHERE email = ?';
+    const [existingEmails] = await pool.query(emailCheckQuery, [email]);
+    
+    if (existingEmails.length > 0) {
+      return res.status(400).json({ message: 'Email already exists' });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [result] = await pool.query(`
-      INSERT INTO hotels 
-      (email, password, hotel_name, hotel_type, address, phone, country_id, state_id, 
-       district_id, zone_id, gst_no, pan_no, aadhar_no, owner_name, owner_mobile, 
-       hotel_timeMorning, hotel_timeEvening, status, created_by_id) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      email, hashedPassword, hotel_name, hotel_type, address, phone, country_id, state_id,
-      district_id, zone_id, gst_no, pan_no, aadhar_no, owner_name, owner_mobile,
-      hotel_timeMorning, hotel_timeEvening, status, created_by_id || 1
+    const query = `
+      INSERT INTO hotels (
+        email, password, hotel_name, hotel_type, role, address, phone,
+        country_id, state_id, district_id, zone_id, gst_no, pan_no,
+        aadhar_no, owner_name, owner_mobile, hotel_timeMorning, hotel_timeEvening,
+        status, created_by_id, masteruserid
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    const [result] = await pool.query(query, [
+      email,
+      hashedPassword,
+      hotel_name,
+      hotel_type,
+      role,
+      address,
+      phone,
+      country_id,
+      state_id,
+      district_id,
+      zone_id,
+      gst_no,
+      pan_no,
+      aadhar_no,
+      owner_name,
+      owner_mobile,
+      hotel_timeMorning,
+      hotel_timeEvening,
+      status,
+      created_by_id,
+      masteruserid
     ]);
 
-    const [newHotelRows] = await pool.query(`
-      SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
-      FROM hotels h
-      LEFT JOIN countries c ON h.country_id = c.country_id
-      LEFT JOIN states s ON h.state_id = s.state_id
-      LEFT JOIN districts d ON h.district_id = d.district_id
-      LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      WHERE h.hotelid = ?
-    `, [result.insertId]);
-    
-    if (newHotelRows.length === 0) {
-      return res.status(404).json({ error: 'Hotel not found after creation' });
-    }
+    const newHotel = {
+      hotelid: result.insertId,
+      email,
+      hotel_name,
+      hotel_type,
+      role,
+      address,
+      phone,
+      country_id,
+      state_id,
+      district_id,
+      zone_id,
+      gst_no,
+      pan_no,
+      aadhar_no,
+      owner_name,
+      owner_mobile,
+      hotel_timeMorning,
+      hotel_timeEvening,
+      status,
+      created_by_id,
+      masteruserid
+    };
 
-    const newHotel = newHotelRows[0];
-    const { password: _, ...hotelWithoutPassword } = newHotel;
-    
-    // Send welcome email with login credentials
+    // Send welcome email
     try {
-      await sendWelcomeEmail(email, hotel_name, password);
+      await sendWelcomeEmail(email, hotel_name);
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);
-      // Don't fail the request if email fails
     }
-    
-    res.status(201).json({
-      message: 'Hotel created successfully! Welcome email sent.',
-      hotel: hotelWithoutPassword
-    });
+
+    res.status(201).json(newHotel);
   } catch (error) {
     console.error('Error creating hotel:', error);
-    res.status(500).json({ error: 'Failed to create hotel', details: error.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // Update hotel
 const updateHotel = async (req, res) => {
+  const { id } = req.params;
+  const {
+    email,
+    password,
+    hotel_name,
+    hotel_type,
+    role,
+    address,
+    phone,
+    country_id,
+    state_id,
+    district_id,
+    zone_id,
+    gst_no,
+    pan_no,
+    aadhar_no,
+    owner_name,
+    owner_mobile,
+    hotel_timeMorning,
+    hotel_timeEvening,
+    status,
+    updated_by_id
+  } = req.body;
+
   try {
-    const { id } = req.params;
-    const { 
-      email, 
-      password, 
-      hotel_name, 
-      hotel_type, 
-      address, 
-      phone, 
-      country_id, 
-      state_id, 
-      district_id, 
-      zone_id, 
-      gst_no, 
-      pan_no, 
-      aadhar_no, 
-      owner_name, 
-      owner_mobile, 
-      hotel_timeMorning, 
-      hotel_timeEvening, 
-      status, 
+    // Check if email exists for another hotel
+    const emailCheckQuery = 'SELECT * FROM hotels WHERE email = ? AND hotelid != ?';
+    const [existingEmails] = await pool.query(emailCheckQuery, [email, id]);
+    
+    if (existingEmails.length > 0) {
+      return res.status(400).json({ message: 'Email already exists for another hotel' });
+    }
+
+    // Prepare update query
+    let query = `
+      UPDATE hotels SET
+        email = ?, 
+        hotel_name = ?, 
+        hotel_type = ?, 
+        role = ?, 
+        address = ?, 
+        phone = ?, 
+        country_id = ?, 
+        state_id = ?, 
+        district_id = ?, 
+        zone_id = ?, 
+        gst_no = ?, 
+        pan_no = ?, 
+        aadhar_no = ?, 
+        owner_name = ?, 
+        owner_mobile = ?, 
+        hotel_timeMorning = ?, 
+        hotel_timeEvening = ?, 
+        status = ?, 
+        updated_by_id = ?,
+        updated_date = NOW()
+    `;
+
+    const values = [
+      email,
+      hotel_name,
+      hotel_type,
+      role,
+      address,
+      phone,
+      country_id,
+      state_id,
+      district_id,
+      zone_id,
+      gst_no,
+      pan_no,
+      aadhar_no,
+      owner_name,
+      owner_mobile,
+      hotel_timeMorning,
+      hotel_timeEvening,
+      status,
       updated_by_id
-    } = req.body;
-    
-    const [hotelRows] = await pool.query('SELECT * FROM hotels WHERE hotelid = ?', [id]);
-    if (hotelRows.length === 0) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
+    ];
 
-    const hotel = hotelRows[0];
-
-    let hashedPassword = hotel.password;
+    // Add password to update if provided
     if (password) {
-      hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password, 10);
+      query += `, password = ?`;
+      values.push(hashedPassword);
     }
 
-    const [result] = await pool.query(`
-      UPDATE hotels 
-      SET email = ?, password = ?, hotel_name = ?, hotel_type = ?, address = ?, 
-          phone = ?, country_id = ?, state_id = ?, district_id = ?, zone_id = ?, 
-          gst_no = ?, pan_no = ?, aadhar_no = ?, owner_name = ?, owner_mobile = ?, 
-          hotel_timeMorning = ?, hotel_timeEvening = ?, status = ?, 
-          updated_by_id = ?, updated_date = CURRENT_TIMESTAMP
-      WHERE hotelid = ?
-    `, [
-      email || hotel.email, 
-      hashedPassword, 
-      hotel_name || hotel.hotel_name, 
-      hotel_type || hotel.hotel_type, 
-      address || hotel.address, 
-      phone || hotel.phone, 
-      country_id || hotel.country_id, 
-      state_id || hotel.state_id, 
-      district_id || hotel.district_id, 
-      zone_id || hotel.zone_id, 
-      gst_no || hotel.gst_no, 
-      pan_no || hotel.pan_no, 
-      aadhar_no || hotel.aadhar_no, 
-      owner_name || hotel.owner_name, 
-      owner_mobile || hotel.owner_mobile, 
-      hotel_timeMorning || hotel.hotel_timeMorning, 
-      hotel_timeEvening || hotel.hotel_timeEvening, 
-      status !== undefined ? status : hotel.status, 
-      updated_by_id || 1,
-      id
-    ]);
+    query += ` WHERE hotelid = ?`;
+    values.push(id);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-
-    const [updatedRows] = await pool.query(`
-      SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
-      FROM hotels h
-      LEFT JOIN countries c ON h.country_id = c.country_id
-      LEFT JOIN states s ON h.state_id = s.state_id
-      LEFT JOIN districts d ON h.district_id = d.district_id
-      LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      WHERE h.hotelid = ?
-    `, [id]);
-
-    const updatedHotel = updatedRows[0];
-    const { password: _, ...hotelWithoutPassword } = updatedHotel;
-    
-    res.json({
-      message: 'Hotel updated successfully!',
-      hotel: hotelWithoutPassword
-    });
+    await pool.query(query, values);
+    res.json({ message: 'Hotel updated successfully' });
   } catch (error) {
     console.error('Error updating hotel:', error);
-    res.status(500).json({ error: 'Failed to update hotel', details: error.message });
-  }
-};
-
-// Toggle hotel status (block/unblock)
-const toggleHotelStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    
-    const [hotelRows] = await pool.query('SELECT * FROM hotels WHERE hotelid = ?', [id]);
-    if (hotelRows.length === 0) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-
-    const newStatus = status === 1 ? 1 : 0;
-    
-    const [result] = await pool.query('UPDATE hotels SET status = ?, updated_date = CURRENT_TIMESTAMP WHERE hotelid = ?', [newStatus, id]);
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-
-    const [updatedRows] = await pool.query(`
-      SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
-      FROM hotels h
-      LEFT JOIN countries c ON h.country_id = c.country_id
-      LEFT JOIN states s ON h.state_id = s.state_id
-      LEFT JOIN districts d ON h.district_id = d.district_id
-      LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      WHERE h.hotelid = ?
-    `, [id]);
-    
-    const updatedHotel = updatedRows[0];
-    const { password: _, ...hotelWithoutPassword } = updatedHotel;
-    
-    const statusText = newStatus === 1 ? 'activated' : 'blocked';
-    res.json({ 
-      message: `Hotel ${statusText} successfully!`,
-      hotel: hotelWithoutPassword
-    });
-  } catch (error) {
-    console.error('Error toggling hotel status:', error);
-    res.status(500).json({ error: 'Failed to update hotel status', details: error.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // Delete hotel
 const deleteHotel = async (req, res) => {
+  const { id } = req.params;
   try {
-    const { id } = req.params;
-    
-    const [hotelRows] = await pool.query('SELECT * FROM hotels WHERE hotelid = ?', [id]);
-    if (hotelRows.length === 0) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-
-    const [result] = await pool.query('DELETE FROM hotels WHERE hotelid = ?', [id]);
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Hotel not found' });
-    }
-    
-    res.json({ message: 'Hotel deleted successfully!' });
+    const query = 'DELETE FROM hotels WHERE hotelid = ?';
+    await pool.query(query, [id]);
+    res.json({ message: 'Hotel deleted successfully' });
   } catch (error) {
     console.error('Error deleting hotel:', error);
-    res.status(500).json({ error: 'Failed to delete hotel', details: error.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// Get hotels by country
-const getHotelsByCountry = async (req, res) => {
+// Check user by email
+const checkUserByEmail = async (req, res) => {
+  const { email } = req.params;
   try {
-    const { countryId } = req.params;
-    const [rows] = await pool.query(`
+    const query = 'SELECT * FROM hotels WHERE email = ?';
+    const [rows] = await pool.query(query, [email]);
+    if (rows.length > 0) {
+      return res.json({ exists: true, user: rows[0] });
+    } else {
+      return res.json({ exists: false });
+    }
+  } catch (error) {
+    console.error('Error checking user:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Search hotels
+const searchHotels = async (req, res) => {
+  const { query } = req.query;
+  try {
+    const searchQuery = `
+      SELECT * FROM hotels 
+      WHERE hotel_name LIKE ? OR email LIKE ? OR phone LIKE ?
+      ORDER BY hotelid DESC
+    `;
+    const searchTerm = `%${query}%`;
+    const [rows] = await pool.query(searchQuery, [searchTerm, searchTerm, searchTerm]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error searching hotels:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Get hotels by status
+const getHotelsByStatus = async (req, res) => {
+  const { status } = req.params;
+  try {
+    const query = `
       SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
+             c.country_name, 
+             s.state_name, 
+             d.district_name, 
+             z.zone_name 
       FROM hotels h
       LEFT JOIN countries c ON h.country_id = c.country_id
       LEFT JOIN states s ON h.state_id = s.state_id
       LEFT JOIN districts d ON h.district_id = d.district_id
       LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      WHERE h.country_id = ?
-      ORDER BY h.hotel_name ASC
-    `, [countryId]);
+      WHERE h.status = ?
+      ORDER BY hotelid DESC
+    `;
+    const [rows] = await pool.query(query, [status]);
     res.json(rows);
   } catch (error) {
-    console.error('Error fetching hotels by country:', error);
-    res.status(500).json({ error: 'Failed to fetch hotels', details: error.message });
+    console.error('Error fetching hotels by status:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// Get hotels by state
-const getHotelsByState = async (req, res) => {
+// Get hotels count
+const getHotelsCount = async (req, res) => {
   try {
-    const { stateId } = req.params;
-    const [rows] = await pool.query(`
-      SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
-      FROM hotels h
-      LEFT JOIN countries c ON h.country_id = c.country_id
-      LEFT JOIN states s ON h.state_id = s.state_id
-      LEFT JOIN districts d ON h.district_id = d.district_id
-      LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      WHERE h.state_id = ?
-      ORDER BY h.hotel_name ASC
-    `, [stateId]);
-    res.json(rows);
+    const query = 'SELECT COUNT(*) as count FROM hotels';
+    const [rows] = await pool.query(query);
+    res.json({ count: rows[0].count });
   } catch (error) {
-    console.error('Error fetching hotels by state:', error);
-    res.status(500).json({ error: 'Failed to fetch hotels', details: error.message });
-  }
-};
-
-// Get hotels by district
-const getHotelsByDistrict = async (req, res) => {
-  try {
-    const { districtId } = req.params;
-    const [rows] = await pool.query(`
-      SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
-      FROM hotels h
-      LEFT JOIN countries c ON h.country_id = c.country_id
-      LEFT JOIN states s ON h.state_id = s.state_id
-      LEFT JOIN districts d ON h.district_id = d.district_id
-      LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      WHERE h.district_id = ?
-      ORDER BY h.hotel_name ASC
-    `, [districtId]);
-    res.json(rows);
-  } catch (error) {
-    console.error('Error fetching hotels by district:', error);
-    res.status(500).json({ error: 'Failed to fetch hotels', details: error.message });
-  }
-};
-
-// Get hotels by zone
-const getHotelsByZone = async (req, res) => {
-  try {
-    const { zoneId } = req.params;
-    const [rows] = await pool.query(`
-      SELECT h.*, 
-             c.country_name,
-             s.state_name,
-             d.district_name,
-             z.zone_name,
-             a.name as created_by_name
-      FROM hotels h
-      LEFT JOIN countries c ON h.country_id = c.country_id
-      LEFT JOIN states s ON h.state_id = s.state_id
-      LEFT JOIN districts d ON h.district_id = d.district_id
-      LEFT JOIN zones z ON h.zone_id = z.zone_id
-      LEFT JOIN agents a ON h.created_by_id = a.id
-      WHERE h.zone_id = ?
-      ORDER BY h.hotel_name ASC
-    `, [zoneId]);
-    res.json(rows);
-  } catch (error) {
-    console.error('Error fetching hotels by zone:', error);
-    res.status(500).json({ error: 'Failed to fetch hotels', details: error.message });
+    console.error('Error fetching hotels count:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -506,10 +435,9 @@ module.exports = {
   getHotelById,
   createHotel,
   updateHotel,
-  toggleHotelStatus,
   deleteHotel,
-  getHotelsByCountry,
-  getHotelsByState,
-  getHotelsByDistrict,
-  getHotelsByZone
+  checkUserByEmail,
+  searchHotels,
+  getHotelsByStatus,
+  getHotelsCount
 };
