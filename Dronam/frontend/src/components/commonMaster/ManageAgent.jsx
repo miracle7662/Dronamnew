@@ -1,31 +1,48 @@
+
+
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Row, 
-  Col, 
-  Card, 
-  Table, 
-  Button, 
-  Modal, 
-  Form, 
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Table,
+  Button,
+  Modal,
+  Form,
   Alert,
   Badge,
   InputGroup,
-  Pagination
+  Pagination,
+  Tab,
+  Tabs,
+  Spinner
 } from 'react-bootstrap';
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  User
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  Users,
+  Flag,
+  Home,
+  CreditCard,
+  Shield
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthContext } from '@/common/context/useAuthContext';
 
-const ManageAgent = () => {
+const ManageAgents = () => {
   const { user } = useAuthContext();
   const [agents, setAgents] = useState([]);
+  const [countries, setCountries] = useState([]);
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -35,12 +52,12 @@ const ManageAgent = () => {
   const [itemsPerPage] = useState(10);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState(null);
+  const [activeTab, setActiveTab] = useState('all');
 
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
-    name: '',
-    role: 'agent',
     phone: '',
     address: '',
     country_id: '',
@@ -50,59 +67,78 @@ const ManageAgent = () => {
     pan_number: '',
     aadhar_number: '',
     gst_number: '',
+    role: 'agent',
     status: 1,
-    created_by_id: null
+    created_by_id: user?.id || null,
+    updated_by_id: null
   });
 
   const [errors, setErrors] = useState({});
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingAgent(null);
-    setFormData({
-      email: '',
-      password: '',
-      name: '',
-      role: 'agent',
-      phone: '',
-      address: '',
-      country_id: '',
-      state_id: '',
-      district_id: '',
-      zone_id: '',
-      pan_number: '',
-      aadhar_number: '',
-      gst_number: '',
-      status: 1,
-      created_by_id: null
-    });
-    setErrors({});
-  };
-
   useEffect(() => {
-    loadAgents();
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        await Promise.all([
+          loadAgents(),
+          loadCountries(),
+          loadStates(),
+          loadDistricts(),
+          loadZones()
+        ]);
+      } catch (err) {
+        setError('Failed to load initial data');
+        console.error('Initial data loading error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const loadAgents = async () => {
-    setLoading(true);
-    setError('');
     try {
       const response = await axios.get('http://localhost:3001/api/agents');
-      if (response && response.data) {
-        // Support both { agents: [...] } and [...] response formats
-        const agentsData = Array.isArray(response.data) ? response.data : response.data.agents;
-        if (agentsData) {
-          setAgents(agentsData);
-        } else {
-          setError('Invalid response from server');
-        }
-      } else {
-        setError('Invalid response from server');
-      }
+      setAgents(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load agents');
-    } finally {
-      setLoading(false);
+      throw new Error(err.response?.data?.error || 'Failed to load agents');
+    }
+  };
+
+  const loadCountries = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/countries');
+      setCountries(response.data);
+    } catch (err) {
+      throw new Error('Failed to load countries');
+    }
+  };
+
+  const loadStates = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/states');
+      setStates(response.data);
+    } catch (err) {
+      throw new Error('Failed to load states');
+    }
+  };
+
+  const loadDistricts = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/districts');
+      setDistricts(response.data);
+    } catch (err) {
+      throw new Error('Failed to load districts');
+    }
+  };
+
+  const loadZones = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/zones');
+      setZones(response.data);
+    } catch (err) {
+      throw new Error('Failed to load zones');
     }
   };
 
@@ -123,15 +159,29 @@ const ManageAgent = () => {
 
   const validateForm = () => {
     const newErrors = {};
+    
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = 'Agent name is required';
     }
+    
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
     }
-    if (!formData.password && !editingAgent) {
-      newErrors.password = 'Password is required';
+    
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
     }
+    
+    if (!formData.country_id) {
+      newErrors.country_id = 'Country is required';
+    }
+    
+    if (!formData.state_id) {
+      newErrors.state_id = 'State is required';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -139,27 +189,27 @@ const ManageAgent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
     setLoading(true);
+    setError('');
+    
     try {
-      const userId = user?.id || 1;
       if (editingAgent) {
         await axios.put(`http://localhost:3001/api/agents/${editingAgent.id}`, {
           ...formData,
-          updated_by_id: userId
+          updated_by_id: user?.id || null
         });
-        await loadAgents();
       } else {
-        const response = await axios.post('http://localhost:3001/api/agents', {
+        await axios.post('http://localhost:3001/api/agents', {
           ...formData,
-          created_by_id: userId
+          created_by_id: user?.id || null
         });
-        if (response.data.agent) {
-          setAgents(prev => [response.data.agent, ...prev]);
-        }
       }
+      await loadAgents();
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save agent');
+      console.error('Save agent error:', err);
     } finally {
       setLoading(false);
     }
@@ -168,21 +218,22 @@ const ManageAgent = () => {
   const handleEdit = (agent) => {
     setEditingAgent(agent);
     setFormData({
-      email: agent.email,
+      name: agent.name || '',
+      email: agent.email || '',
       password: '',
-      name: agent.name,
-      role: agent.role,
-      phone: agent.phone,
-      address: agent.address,
-      country_id: agent.country_id,
-      state_id: agent.state_id,
-      district_id: agent.district_id,
-      zone_id: agent.zone_id,
-      pan_number: agent.pan_number,
-      aadhar_number: agent.aadhar_number,
-      gst_number: agent.gst_number,
+      phone: agent.phone || '',
+      address: agent.address || '',
+      country_id: agent.country_id || '',
+      state_id: agent.state_id || '',
+      district_id: agent.district_id || '',
+      zone_id: agent.zone_id || '',
+      pan_number: agent.pan_number || '',
+      aadhar_number: agent.aadhar_number || '',
+      gst_number: agent.gst_number || '',
+      role: agent.role || 'agent',
       status: agent.status !== undefined ? agent.status : 1,
-      created_by_id: agent.created_by_id
+      created_by_id: agent.created_by_id || null,
+      updated_by_id: agent.updated_by_id || null
     });
     setShowModal(true);
   };
@@ -193,29 +244,96 @@ const ManageAgent = () => {
   };
 
   const confirmDelete = async () => {
-    if (agentToDelete) {
-      try {
-        await axios.delete(`http://localhost:3001/api/agents/${agentToDelete.id}`);
-        await loadAgents();
-        setShowDeleteModal(false);
-        setAgentToDelete(null);
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to delete agent');
-      }
+    if (!agentToDelete) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      await axios.delete(`http://localhost:3001/api/agents/${agentToDelete.id}`);
+      await loadAgents();
+      setShowDeleteModal(false);
+      setAgentToDelete(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete agent');
+      console.error('Delete agent error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredAgents = agents.filter(agent =>
-    agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (agent.address && agent.address.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingAgent(null);
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      phone: '',
+      address: '',
+      country_id: '',
+      state_id: '',
+      district_id: '',
+      zone_id: '',
+      pan_number: '',
+      aadhar_number: '',
+      gst_number: '',
+      role: 'agent',
+      status: 1,
+      created_by_id: user?.id || null,
+      updated_by_id: null
+    });
+    setErrors({});
+  };
+
+  const filteredAgents = agents.filter(agent => {
+    if (!agent) return false;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (agent.name?.toLowerCase().includes(searchLower) || '') ||
+      (agent.email?.toLowerCase().includes(searchLower) || '') ||
+      (agent.phone?.toLowerCase().includes(searchLower) || '') ||
+      (agent.role?.toLowerCase().includes(searchLower) || '')
+    );
+  });
+
+  const getFilteredAgentsByStatus = (status) => {
+    return filteredAgents.filter(agent => 
+      status === 'all' ? true : agent.status === (status === 'active' ? 1 : 0)
+    );
+  };
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentAgents = filteredAgents.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredAgents.length / itemsPerPage);
+  const currentAgents = getFilteredAgentsByStatus(activeTab).slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(getFilteredAgentsByStatus(activeTab).length / itemsPerPage);
+
+  const getAgentStatusBadge = (status) => {
+    return status === 1 ? 'success' : 'secondary';
+  };
+
+  const getCountryName = (countryId) => {
+    const country = countries.find(c => c.country_id === countryId);
+    return country ? country.country_name : 'N/A';
+  };
+
+  const getStateName = (stateId) => {
+    const state = states.find(s => s.state_id === stateId);
+    return state ? state.state_name : 'N/A';
+  };
+
+  if (loading && agents.length === 0) {
+    return (
+      <Container fluid className="py-4">
+        <div className="text-center py-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+          <p className="mt-3">Loading agents data...</p>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container fluid className="py-4">
@@ -224,7 +342,7 @@ const ManageAgent = () => {
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h2 className="mb-1">
-                <User className="me-2" size={24} />
+                <Users className="me-2" size={24} />
                 Manage Agents
               </h2>
               <p className="text-muted mb-0">Manage agents and their information</p>
@@ -265,88 +383,144 @@ const ManageAgent = () => {
 
       <Card>
         <Card.Body className="p-0">
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                <Table hover className="mb-0">
-                  <thead className="table-light sticky-top bg-white" style={{ zIndex: 1 }}>
-                    <tr>
-                      <th style={{ minWidth: '50px' }}>#</th>
-                      <th style={{ minWidth: '200px' }}>Agent</th>
-                      <th style={{ minWidth: '150px' }}>Role</th>
-                      <th style={{ minWidth: '150px' }}>Contact</th>
-                      <th style={{ minWidth: '200px' }}>Address</th>
-                      <th style={{ minWidth: '150px' }}>Location</th>
-                      <th style={{ minWidth: '120px' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentAgents.map((agent, index) => (
-                      <tr key={agent.id}>
-                        <td>{indexOfFirstItem + index + 1}</td>
-                        <td>
-                          <strong>{agent.name}</strong>
-                          <br />
-                          <small className="text-muted">{agent.email}</small>
-                        </td>
-                        <td>{agent.role || 'agent'}</td>
-                        <td>{agent.phone || <span className="text-muted">-</span>}</td>
-                        <td>{agent.address || <span className="text-muted">-</span>}</td>
-                        <td>
-                          {agent.country_id || agent.state_id || agent.district_id || agent.zone_id ? (
-                            <>
-                              {agent.country_id && <Badge bg="info" className="me-1">Country: {agent.country_id}</Badge>}
-                              {agent.state_id && <Badge bg="info" className="me-1">State: {agent.state_id}</Badge>}
-                              {agent.district_id && <Badge bg="info" className="me-1">District: {agent.district_id}</Badge>}
-                              {agent.zone_id && <Badge bg="info">Zone: {agent.zone_id}</Badge>}
-                            </>
-                          ) : (
-                            <span className="text-muted">-</span>
-                          )}
-                        </td>
-                        <td>
-                          <div className="d-flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline-info"
-                              onClick={() => handleEdit(agent)}
-                              title="Edit"
-                            >
-                              <Edit size={14} />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              onClick={() => handleDelete(agent)}
-                              title="Delete"
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(k) => {
+              setActiveTab(k);
+              setCurrentPage(1);
+            }}
+            className="mb-0"
+            fill
+          >
+            <Tab eventKey="all" title={`All (${getFilteredAgentsByStatus('all').length})`} />
+            <Tab eventKey="active" title={`Active (${getFilteredAgentsByStatus('active').length})`} />
+            <Tab eventKey="inactive" title={`Inactive (${getFilteredAgentsByStatus('inactive').length})`} />
+          </Tabs>
 
-              {filteredAgents.length === 0 && (
-                <div className="text-center py-5">
-                  <User size={48} className="text-muted mb-3" />
-                  <h5 className="text-muted">No agents found</h5>
-                  <p className="text-muted">
-                    {searchTerm ? 'Try adjusting your search terms' : 'Add your first agent to get started'}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
+          <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            <Table hover className="mb-0">
+              <thead className="table-light sticky-top bg-white" style={{ zIndex: 1 }}>
+                <tr>
+                  <th style={{ minWidth: '50px' }}>#</th>
+                  <th style={{ minWidth: '200px' }}>Agent</th>
+                  <th style={{ minWidth: '100px' }}>Role</th>
+                  <th style={{ minWidth: '200px' }}>Contact</th>
+                  <th style={{ minWidth: '250px' }}>Address</th>
+                  <th style={{ minWidth: '150px' }}>Location</th>
+                  <th style={{ minWidth: '120px' }}>Documents</th>
+                  <th style={{ minWidth: '100px' }}>Status</th>
+                  <th style={{ minWidth: '120px' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentAgents.length > 0 ? (
+                  currentAgents.map((agent, index) => (
+                    <tr key={agent.id}>
+                      <td>{indexOfFirstItem + index + 1}</td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <div className="me-2">
+                            <User size={16} className="text-muted" />
+                          </div>
+                          <div>
+                            <strong>{agent.name}</strong>
+                            <br />
+                            <small className="text-muted">{agent.email}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <Badge bg="info" className="text-uppercase">
+                          {agent.role}
+                        </Badge>
+                      </td>
+                      <td>
+                        <div>
+                          <Mail size={14} className="text-muted me-1" />
+                          {agent.email}
+                        </div>
+                        <div>
+                          <Phone size={14} className="text-muted me-1" />
+                          {agent.phone || 'N/A'}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <MapPin size={14} className="text-muted me-1" />
+                          <span className="text-truncate" style={{ maxWidth: '200px' }}>
+                            {agent.address || 'N/A'}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div>
+                          <Flag size={14} className="text-muted me-1" />
+                          {getCountryName(agent.country_id)}
+                        </div>
+                        <div>
+                          <Home size={14} className="text-muted me-1" />
+                          {getStateName(agent.state_id)}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="small">
+                          {agent.pan_number && (
+                            <div>
+                              <CreditCard size={14} className="text-muted me-1" />
+                              PAN: {agent.pan_number}
+                            </div>
+                          )}
+                          {agent.aadhar_number && (
+                            <div>
+                              <Shield size={14} className="text-muted me-1" />
+                              Aadhar: {agent.aadhar_number}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <Badge bg={getAgentStatusBadge(agent.status)}>
+                          {agent.status === 1 ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
+                      <td>
+                        <div className="d-flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline-info"
+                            onClick={() => handleEdit(agent)}
+                            title="Edit"
+                            disabled={loading}
+                          >
+                            <Edit size={14} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => handleDelete(agent)}
+                            title="Delete"
+                            disabled={loading}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="text-center py-5">
+                      <Users size={48} className="text-muted mb-3" />
+                      <h5 className="text-muted">No agents found</h5>
+                      <p className="text-muted">
+                        {searchTerm ? 'Try adjusting your search terms' : 'Add your first agent to get started'}
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          </div>
         </Card.Body>
       </Card>
 
@@ -356,44 +530,50 @@ const ManageAgent = () => {
             <Pagination>
               <Pagination.First 
                 onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || loading}
               />
               <Pagination.Prev 
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || loading}
               />
+              
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                 <Pagination.Item
                   key={page}
                   active={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
+                  onClick={() => !loading && setCurrentPage(page)}
+                  disabled={loading}
                 >
                   {page}
                 </Pagination.Item>
               ))}
+              
               <Pagination.Next 
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || loading}
               />
               <Pagination.Last 
                 onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || loading}
               />
             </Pagination>
           </Col>
         </Row>
       )}
 
-      <Modal show={showModal} onHide={handleCloseModal} size="lg">
+      {/* Add/Edit Modal */}
+      <Modal show={showModal} onHide={handleCloseModal} size="xl">
         <Modal.Header closeButton>
-          <Modal.Title>{editingAgent ? 'Edit Agent' : 'Add New Agent'}</Modal.Title>
+          <Modal.Title>
+            {editingAgent ? 'Edit Agent' : 'Add New Agent'}
+          </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Name *</Form.Label>
+                  <Form.Label>Agent Name *</Form.Label>
                   <Form.Control
                     type="text"
                     name="name"
@@ -401,12 +581,31 @@ const ManageAgent = () => {
                     onChange={handleInputChange}
                     isInvalid={!!errors.name}
                     placeholder="Enter agent name"
+                    disabled={loading}
                   />
                   <Form.Control.Feedback type="invalid">
                     {errors.name}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Role</Form.Label>
+                  <Form.Select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                  >
+                    <option value="agent">Agent</option>
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Super Admin</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Email *</Form.Label>
@@ -416,61 +615,48 @@ const ManageAgent = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     isInvalid={!!errors.email}
-                    placeholder="Enter email"
+                    placeholder="Enter email address"
+                    disabled={loading}
                   />
                   <Form.Control.Feedback type="invalid">
                     {errors.email}
                   </Form.Control.Feedback>
                 </Form.Group>
               </Col>
-            </Row>
-            {!editingAgent && (
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Password *</Form.Label>
-                    <Form.Control
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      isInvalid={!!errors.password}
-                      placeholder="Enter password"
-                    />
-                    <Form.Control.Feedback type="invalid">
-                      {errors.password}
-                    </Form.Control.Feedback>
-                  </Form.Group>
-                </Col>
-              </Row>
-            )}
-            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Role</Form.Label>
+                  <Form.Label>Password {!editingAgent && '*'}</Form.Label>
                   <Form.Control
-                    type="text"
-                    name="role"
-                    value={formData.role}
+                    type="password"
+                    name="password"
+                    value={formData.password}
                     onChange={handleInputChange}
-                    placeholder="Enter role"
+                    placeholder="Enter password"
+                    disabled={loading}
+                    required={!editingAgent}
                   />
                 </Form.Group>
               </Col>
+            </Row>
+
+            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Phone</Form.Label>
+                  <Form.Label>Phone *</Form.Label>
                   <Form.Control
-                    type="text"
+                    type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
+                    isInvalid={!!errors.phone}
                     placeholder="Enter phone number"
+                    disabled={loading}
                   />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.phone}
+                  </Form.Control.Feedback>
                 </Form.Group>
               </Col>
-            </Row>
-            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Address</Form.Label>
@@ -480,62 +666,104 @@ const ManageAgent = () => {
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder="Enter address"
+                    disabled={loading}
                   />
                 </Form.Group>
               </Col>
+            </Row>
+
+            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Country ID</Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Label>Country *</Form.Label>
+                  <Form.Select
                     name="country_id"
                     value={formData.country_id}
                     onChange={handleInputChange}
-                    placeholder="Enter country ID"
-                  />
+                    isInvalid={!!errors.country_id}
+                    disabled={loading}
+                  >
+                    <option value="">Select Country</option>
+                    {countries.map(country => (
+                      <option key={country.country_id} value={country.country_id}>
+                        {country.country_name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">
+                    {errors.country_id}
+                  </Form.Control.Feedback>
                 </Form.Group>
               </Col>
-            </Row>
-            <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>State ID</Form.Label>
-                  <Form.Control
-                    type="text"
+                  <Form.Label>State *</Form.Label>
+                  <Form.Select
                     name="state_id"
                     value={formData.state_id}
                     onChange={handleInputChange}
-                    placeholder="Enter state ID"
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>District ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="district_id"
-                    value={formData.district_id}
-                    onChange={handleInputChange}
-                    placeholder="Enter district ID"
-                  />
+                    isInvalid={!!errors.state_id}
+                    disabled={loading}
+                  >
+                    <option value="">Select State</option>
+                    {states
+                      .filter(state => state.country_id == formData.country_id)
+                      .map(state => (
+                        <option key={state.state_id} value={state.state_id}>
+                          {state.state_name}
+                        </option>
+                      ))}
+                  </Form.Select>
+                  <Form.Control.Feedback type="invalid">
+                    {errors.state_id}
+                  </Form.Control.Feedback>
                 </Form.Group>
               </Col>
             </Row>
+
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Zone ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="zone_id"
-                    value={formData.zone_id}
+                  <Form.Label>District</Form.Label>
+                  <Form.Select
+                    name="district_id"
+                    value={formData.district_id}
                     onChange={handleInputChange}
-                    placeholder="Enter zone ID"
-                  />
+                    disabled={loading}
+                  >
+                    <option value="">Select District</option>
+                    {districts
+                      .filter(district => district.state_id == formData.state_id)
+                      .map(district => (
+                        <option key={district.district_id} value={district.district_id}>
+                          {district.district_name}
+                        </option>
+                      ))}
+                  </Form.Select>
                 </Form.Group>
               </Col>
               <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Zone</Form.Label>
+                  <Form.Select
+                    name="zone_id"
+                    value={formData.zone_id}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select Zone</option>
+                    {zones.map(zone => (
+                      <option key={zone.zone_id} value={zone.zone_id}>
+                        {zone.zone_name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>PAN Number</Form.Label>
                   <Form.Control
@@ -544,12 +772,11 @@ const ManageAgent = () => {
                     value={formData.pan_number}
                     onChange={handleInputChange}
                     placeholder="Enter PAN number"
+                    disabled={loading}
                   />
                 </Form.Group>
               </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>Aadhar Number</Form.Label>
                   <Form.Control
@@ -558,10 +785,11 @@ const ManageAgent = () => {
                     value={formData.aadhar_number}
                     onChange={handleInputChange}
                     placeholder="Enter Aadhar number"
+                    disabled={loading}
                   />
                 </Form.Group>
               </Col>
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>GST Number</Form.Label>
                   <Form.Control
@@ -570,10 +798,12 @@ const ManageAgent = () => {
                     value={formData.gst_number}
                     onChange={handleInputChange}
                     placeholder="Enter GST number"
+                    disabled={loading}
                   />
                 </Form.Group>
               </Col>
             </Row>
+
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
@@ -582,6 +812,7 @@ const ManageAgent = () => {
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
+                    disabled={loading}
                   >
                     <option value={1}>Active</option>
                     <option value={0}>Inactive</option>
@@ -591,17 +822,27 @@ const ManageAgent = () => {
             </Row>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleCloseModal}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={loading}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? 'Saving...' : (editingAgent ? 'Update' : 'Save')}
+            <Button 
+              variant="primary" 
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                  <span className="ms-2">Saving...</span>
+                </>
+              ) : editingAgent ? 'Update' : 'Save'}
             </Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => !loading && setShowDeleteModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
@@ -610,11 +851,16 @@ const ManageAgent = () => {
           This action cannot be undone.
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={loading}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDelete}>
-            Delete
+          <Button variant="danger" onClick={confirmDelete} disabled={loading}>
+            {loading ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                <span className="ms-2">Deleting...</span>
+              </>
+            ) : 'Delete'}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -622,4 +868,4 @@ const ManageAgent = () => {
   );
 };
 
-export default ManageAgent;
+export default ManageAgents;

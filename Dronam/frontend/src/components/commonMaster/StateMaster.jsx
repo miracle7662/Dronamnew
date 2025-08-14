@@ -135,6 +135,10 @@ const StateMaster = () => {
           created_by_id: userId
         });
         if (response.data.state) {
+          const newState = {
+            ...response.data.state,
+            country_name: countries.find(country => country.country_id === response.data.state.country_id)?.country_name || ''
+          };
           setStates(prev => [response.data.state, ...prev]);
         }
       }
