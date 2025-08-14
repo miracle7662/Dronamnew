@@ -9,7 +9,8 @@ const {
   getHotelsByCountry,
   getHotelsByState,
   getHotelsByDistrict,
-  getHotelsByZone
+  getHotelsByZone,
+  getHotelByEmail // Import the new function
 } = require('../controllers/hotelController');
 
 // Get all hotels
@@ -26,6 +27,9 @@ router.put('/:id', updateHotel);
 
 // Delete hotel (soft delete)
 router.delete('/:id', deleteHotel);
+
+// Get hotel by email
+router.get('/email/:email', getHotelByEmail); // Add this line to get hotel by email
 
 // Get hotels by country
 router.get('/country/:countryId', getHotelsByCountry);

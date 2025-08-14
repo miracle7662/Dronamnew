@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Login hotel
 const login = async (req, res) => {
+  console.log('Login attempt:', req.body); // Log incoming request data
   try {
     const { email, password } = req.body;
     
@@ -48,6 +49,25 @@ const login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed', details: error.message });
+  }
+};
+
+const getHotelByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+    const [rows] = await pool.query('SELECT * FROM hotels WHERE email = ?', [email]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Hotel not found' });
+    }
+    
+    const hotel = rows[0];
+    const { password: _, ...hotelWithoutPassword } = hotel;
+    
+    res.json(hotelWithoutPassword);
+  } catch (error) {
+    console.error('Error fetching hotel by email:', error);
+    res.status(500).json({ error: 'Failed to fetch hotel', details: error.message });
   }
 };
 
