@@ -4,7 +4,7 @@ const { pool } = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Login for both hotels and agents
+// Login for hotels, agents, and superadmin
 const login = async (req, res) => {
   try {
     const { email, password, type } = req.body;
@@ -13,44 +13,62 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Email, password, and type are required' });
     }
 
-    let table = type === 'hotel' ? 'hotels' : 'agents';
-    let query = `SELECT * FROM ${table} WHERE email = ? AND status = 1`;
+    let table, idField, nameField;
+    
+    switch(type) {
+      case 'hotel':
+        table = 'hotels';
+        idField = 'hotelid';
+        nameField = 'hotel_name';
+        break;
+      case 'agent':
+        table = 'agents';
+        idField = 'id';
+        nameField = 'name';
+        break;
+      case 'superadmin':
+        table = 'superadmin';
+        idField = 'id';
+        nameField = 'username';
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid user type' });
+    }
 
+    const query = `SELECT * FROM ${table} WHERE email = ? AND status = 1`;
     const [rows] = await pool.query(query, [email]);
 
     if (rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials or account not active' });
     }
 
     const user = rows[0];
 
-    // For hotels, check password (assuming it's hashed)
+    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Generate JWT token
     const token = jwt.sign(
       { 
-        id: user.id || user.hotelid, 
+        id: user[idField], 
         email: user.email, 
-        name: user.name || user.hotel_name, 
-        role: type,
-        type: type
+        name: user[nameField], 
+        role: type
       }, 
       JWT_SECRET, 
       { expiresIn: '24h' }
     );
 
+    // Return user data without password
+    const { password: _, ...userData } = user;
+
     res.json({
       token,
-      user: {
-        id: user.id || user.hotelid,
-        email: user.email,
-        name: user.name || user.hotel_name,
-        role: type
-      }
+      user: userData
     });
   } catch (error) {
     console.error('Login error:', error);
