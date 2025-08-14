@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { 
   Container, 
@@ -21,13 +23,12 @@ import {
   MapPin,
   Building,
   Flag,
-  Map,
-  Globe
+  Map
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthContext } from '@/common/context/useAuthContext';
 
-const ZoneMaster = () => {
+const ZoneMasterUpdated = () => {
   const { user } = useAuthContext();
   const [zones, setZones] = useState([]);
   const [districts, setDistricts] = useState([]);
@@ -114,8 +115,8 @@ const ZoneMaster = () => {
     
     if (!formData.zone_code.trim()) {
       newErrors.zone_code = 'Zone code is required';
-    } else if (formData.zone_code.length !== 4) {
-      newErrors.zone_code = 'Zone code must be 4 characters';
+    } else if (formData.zone_code.length > 3) {
+      newErrors.zone_code = 'Zone code must be 3 characters or less';
     }
     
     if (!formData.district_id) {
@@ -177,10 +178,10 @@ const ZoneMaster = () => {
   const confirmDelete = async () => {
     if (zoneToDelete) {
       try {
-        await axios.delete(`http://localhost:3001/api/zones/${zoneToDelete.zone_id}`);
-        await loadZones();
-        setShowDeleteModal(false);
-        setZoneToDelete(null);
+      await axios.delete(`http://localhost:3001/api/zones/${zoneToDelete.zone_id}`);
+      await loadZones();
+      setShowDeleteModal(false);
+      setZoneToDelete(null);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete zone');
       }
@@ -205,7 +206,8 @@ const ZoneMaster = () => {
     zone.zone_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     zone.zone_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (zone.description && zone.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (zone.district_name && zone.district_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (zone.district_name && zone.district_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (zone.state_name && zone.state_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -220,7 +222,7 @@ const ZoneMaster = () => {
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h2 className="mb-1">
-                <Globe className="me-2" size={24} />
+                <MapPin className="me-2" size={24} />
                 Zone Master
               </h2>
               <p className="text-muted mb-0">Manage zones and their information</p>
@@ -290,7 +292,7 @@ const ZoneMaster = () => {
                         <td>
                           <div className="d-flex align-items-center">
                             <div className="me-2">
-                              <Globe size={16} className="text-muted" />
+                              <Map size={16} className="text-muted" />
                             </div>
                             <strong>{zone.zone_name}</strong>
                           </div>
@@ -303,7 +305,7 @@ const ZoneMaster = () => {
                         <td>
                           {zone.district_name ? (
                             <div className="d-flex align-items-center">
-                              <MapPin size={14} className="text-muted me-1" />
+                              <Building size={14} className="text-muted me-1" />
                               {zone.district_name}
                             </div>
                           ) : (
@@ -361,7 +363,7 @@ const ZoneMaster = () => {
               {/* Empty State */}
               {currentZones.length === 0 && (
                 <div className="text-center py-5">
-                  <Globe size={48} className="text-muted mb-3" />
+                  <Map size={48} className="text-muted mb-3" />
                   <h5 className="text-muted">No zones found</h5>
                   <p className="text-muted">
                     {searchTerm ? 'Try adjusting your search terms' : 'Add your first zone to get started'}
@@ -445,8 +447,8 @@ const ZoneMaster = () => {
                     value={formData.zone_code}
                     onChange={handleInputChange}
                     isInvalid={!!errors.zone_code}
-                    placeholder="e.g., ZONE, AREA"
-                    maxLength={4}
+                    placeholder="e.g., ZN01, ZN02"
+                    maxLength={3}
                   />
                   <Form.Control.Feedback type="invalid">
                     {errors.zone_code}
@@ -543,4 +545,4 @@ const ZoneMaster = () => {
   );
 };
 
-export default ZoneMaster;
+export default ZoneMasterUpdated;

@@ -56,6 +56,29 @@ const ManageAgent = () => {
 
   const [errors, setErrors] = useState({});
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingAgent(null);
+    setFormData({
+      email: '',
+      password: '',
+      name: '',
+      role: 'agent',
+      phone: '',
+      address: '',
+      country_id: '',
+      state_id: '',
+      district_id: '',
+      zone_id: '',
+      pan_number: '',
+      aadhar_number: '',
+      gst_number: '',
+      status: 1,
+      created_by_id: null
+    });
+    setErrors({});
+  };
+
   useEffect(() => {
     loadAgents();
   }, []);
