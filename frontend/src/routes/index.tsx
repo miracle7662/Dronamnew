@@ -32,6 +32,7 @@ const Country = React.lazy(() => import('./../views/apps/Country')) // Updated t
 const States = React.lazy(() => import('./../views/apps/States')) // Updated to use <States /> component
 const Districts = React.lazy(() => import('./../views/apps/Districts')) // Updated to use <Districts /> component
 const Zones = React.lazy(() => import('./../views/apps/Zones')) // Updated to use <Zones /> component
+const Catagories  = React.lazy(() => import('../components/commonMaster/Catagories'))
 //const ManageAgents = React.lazy(() => import('./../views/apps/ManageAgents')) // Added ManageAgents component
 const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgent')) // Corrected import to ManageAgent component
 const City = React.lazy(() => import('../views/apps/City')) // Updated to use <City /> component
@@ -52,6 +53,7 @@ const FeatureMaster = React.lazy(() => import('../views/apps/Featuremaster'))
 
 const CompanyMaster = React.lazy(() => import('../views/apps/Companymaster'))
 const AddHotel = React.lazy(() => import('../views/apps/AddHotel'))
+
 
 
 
@@ -377,12 +379,19 @@ const appsRoutes: RoutesProps = {
       element: <HotelMasterPage />,
       route: PrivateRoute,
     },
-      {
+    {
       path: '/apps/AddHotel',
       name: 'AddHotel ',
       element: <HotelMasterPage />,
       route: PrivateRoute,
     },
+    {
+      path: '/apps/Catagories',
+      name: 'Catagories ',
+      element: <Catagories />,
+      route: PrivateRoute,
+    },
+
 
     // {
     //   path: '/apps/ItemGroup',

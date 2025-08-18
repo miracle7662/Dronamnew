@@ -217,11 +217,12 @@ const MENU_ITEMS: MenuItemTypes[] = [
         parentKey: 'commonMasters',
       },
       {
-        key: 'ManageAgents',
-        label: 'Manage Agents',
-        url: '/commonMasters/ManageAgents',
+        key: 'Catagories',
+        label: 'Catagories',
+        url: '/apps/Catagories',
         parentKey: 'commonMasters',
       },
+      
     ],
   },
 
@@ -2137,6 +2138,13 @@ const SUPERADMIN_MENU_ITEMS: MenuItemTypes[] = [
         key: 'HotelMaster',
         label: 'HotelMaster',
         url: '/apps/HotelMaster',
+        parentKey: 'commonMasters',
+        roles: ['superadmin'],
+      },
+       {
+        key: 'Catagories',
+        label: 'Catagories',
+        url: '/apps/Catagories',
         parentKey: 'commonMasters',
         roles: ['superadmin'],
       },

@@ -29,6 +29,11 @@ export function useAuthContext() {
   return context
 }
 
+export function useAuth() {
+  const context = useAuthContext();
+  return context;
+}
+
 const authSessionKey = 'WINDOW_AUTH_SESSION'
 
 export function AuthProvider({ children }: { children: ReactNode }) {

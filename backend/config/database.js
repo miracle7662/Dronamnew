@@ -152,6 +152,80 @@ const initDatabase = async () => {
         FOREIGN KEY (district_id) REFERENCES districts(district_id),
         FOREIGN KEY (zone_id) REFERENCES zones(zone_id)
       );
+      
+    CREATE TABLE IF NOT EXISTS categories (
+      categories_id INT AUTO_INCREMENT PRIMARY KEY,
+      categories_name VARCHAR(150) NOT NULL,
+      description VARCHAR(200) NOT NULL,
+      status INTEGER DEFAULT 1,
+      created_by_id INT NOT NULL,
+      created_by_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_by_id INT DEFAULT NULL,
+      updated_by_date DATETIME
+    );
+
+    CREATE TABLE IF NOT EXISTS units (
+    unit_id INT AUTO_INCREMENT PRIMARY KEY,
+    unit_name VARCHAR(50) NOT NULL UNIQUE,   -- e.g. "kg", "litre", "piece"
+    status INTEGER DEFAULT 1,
+    created_by_id INT NOT NULL,
+    created_by_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_by_id INT DEFAULT NULL,
+    updated_by_date DATETIME
+);
+
+
+CREATE TABLE IF NOT EXISTS addonsMaster (
+    addon_id INT AUTO_INCREMENT PRIMARY KEY,
+    addon_name VARCHAR(150) NOT NULL,
+    description VARCHAR(500) NOT NULL,
+    rate DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    unit_id INT,
+    unit_conversion VARCHAR(150) NOT NULL,
+    status INTEGER DEFAULT 1,
+    created_by_id INT NOT NULL,
+    created_by_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_by_id INT DEFAULT NULL,
+    updated_by_date DATETIME,
+    FOREIGN KEY (unit_id) REFERENCES units(unit_id)
+);
+
+CREATE TABLE IF NOT EXISTS menumaster (
+    menu_id INT AUTO_INCREMENT PRIMARY KEY,
+    menu_name VARCHAR(150) NOT NULL,
+    description TEXT,
+    food_type ENUM('veg', 'nonveg') NOT NULL DEFAULT 'veg',
+    category_id INT NOT NULL,
+    preparation_time TIME,
+    status INTEGER DEFAULT 1,
+    created_by_id INT NOT NULL,
+    created_by_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_by_id INT DEFAULT NULL,
+    updated_by_date DATETIME,
+    FOREIGN KEY (category_id) REFERENCES categories(categories_id)
+);
+
+CREATE TABLE IF NOT EXISTS menu_details (
+    menudetails_id INT AUTO_INCREMENT PRIMARY KEY,
+    menu_id INT NOT NULL,
+    variant_type VARCHAR(150) NOT NULL,   -- e.g. half, full, quarter
+    rate DECIMAL(19,2) NOT NULL DEFAULT 0.00,
+    FOREIGN KEY (menu_id) REFERENCES menumaster(menu_id)
+);
+
+
+CREATE TABLE IF NOT EXISTS menuaddon (
+    menuaddon_id INT AUTO_INCREMENT PRIMARY KEY,
+    menu_id INT NOT NULL,
+    addon_id INT NOT NULL,
+    FOREIGN KEY (menu_id) REFERENCES menumaster(menu_id),
+    FOREIGN KEY (addon_id) REFERENCES addonsMaster(addon_id)
+);
+
+
+
+    
+
     `;
 
     console.log('Executing MySQL schema...');
