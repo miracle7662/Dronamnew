@@ -1,10 +1,11 @@
 const { pool } = require('../config/database');
 
-// Get all categories
+// Get all categories (active only)
 const getAllCategories = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT * FROM categories 
+      WHERE status = 1
       ORDER BY categories_name ASC
     `);
     res.json(rows);

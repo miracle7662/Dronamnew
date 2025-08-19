@@ -1,0 +1,397 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Container, 
+  Row, 
+  Col, 
+  Card, 
+  Table, 
+  Button, 
+  Modal, 
+  Form, 
+  Alert,
+  Badge,
+  InputGroup,
+  Pagination
+} from 'react-bootstrap';
+import { 
+  Plus, 
+  Search, 
+  Edit, 
+  Trash2, 
+  Box
+} from 'lucide-react';
+import axios from 'axios';
+import { useAuthContext } from '@/common/context/useAuthContext';
+
+const UnitMaster = () => {
+  const { user } = useAuthContext();
+  const [units, setUnits] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editingUnit, setEditingUnit] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [unitToDelete, setUnitToDelete] = useState(null);
+
+  const [formData, setFormData] = useState({
+    unit_name: '',
+    status: 1,
+    created_by_id: null
+  });
+
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    loadUnits();
+  }, []);
+
+  const loadUnits = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.get('http://localhost:3001/api/units');
+      if (response && response.data) {
+        setUnits(response.data);
+      } else {
+        setError('Invalid response from server');
+      }
+    } catch (err) {
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Failed to load units');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
+    setFormData(prev => ({
+      ...prev,
+      [name]: val
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.unit_name.trim()) {
+      newErrors.unit_name = 'Unit name is required';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    setLoading(true);
+    try {
+      const userId = user?.id || 1;
+      if (editingUnit) {
+        await axios.put(`http://localhost:3001/api/units/${editingUnit.unit_id}`, {
+          ...formData,
+          updated_by_id: userId
+        });
+      } else {
+        const response = await axios.post('http://localhost:3001/api/units', {
+          ...formData,
+          created_by_id: userId
+        });
+        if (response.data.unit) {
+          setUnits(prev => [response.data.unit, ...prev]);
+        }
+      }
+      await loadUnits();
+      handleCloseModal();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save unit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (unit) => {
+    setEditingUnit(unit);
+    setFormData({
+      unit_name: unit.unit_name,
+      status: unit.status !== undefined ? unit.status : 1
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = (unit) => {
+    setUnitToDelete(unit);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (unitToDelete) {
+      try {
+        await axios.delete(`http://localhost:3001/api/units/${unitToDelete.unit_id}`);
+        await loadUnits();
+        setShowDeleteModal(false);
+        setUnitToDelete(null);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to delete unit');
+      }
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingUnit(null);
+    setFormData({
+      unit_name: '',
+      status: 1
+    });
+    setErrors({});
+  };
+
+  const filteredUnits = units.filter(unit =>
+    unit.unit_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUnits = filteredUnits.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredUnits.length / itemsPerPage);
+
+  return (
+    <Container fluid className="py-4">
+      <Row className="mb-4">
+        <Col>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <h2 className="mb-1">
+                <Box className="me-2" size={24} />
+                Unit Master
+              </h2>
+              <p className="text-muted mb-0">Manage measurement units</p>
+            </div>
+            <Button 
+              variant="primary" 
+              onClick={() => setShowModal(true)}
+              className="d-flex align-items-center gap-2"
+            >
+              <Plus size={18} />
+              Add Unit
+            </Button>
+          </div>
+        </Col>
+      </Row>
+
+      <Row className="mb-4">
+        <Col md={6}>
+          <InputGroup>
+            <InputGroup.Text>
+              <Search size={16} />
+            </InputGroup.Text>
+            <Form.Control
+              type="text"
+              placeholder="Search units..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </InputGroup>
+        </Col>
+      </Row>
+
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      <Card>
+        <Card.Body className="p-0">
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                <Table hover className="mb-0">
+                  <thead className="table-light sticky-top bg-white" style={{ zIndex: 1 }}>
+                    <tr>
+                      <th style={{ minWidth: '50px' }}>#</th>
+                      <th style={{ minWidth: '200px' }}>Unit Name</th>
+                      <th style={{ minWidth: '100px' }}>Status</th>
+                      <th style={{ minWidth: '120px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentUnits.map((unit, index) => (
+                      <tr key={unit.unit_id}>
+                        <td>{indexOfFirstItem + index + 1}</td>
+                        <td>
+                          <strong>{unit.unit_name}</strong>
+                        </td>
+                        <td>
+                          {unit.status === 1 ? (
+                            <Badge bg="success">Active</Badge>
+                          ) : (
+                            <Badge bg="secondary">Inactive</Badge>
+                          )}
+                        </td>
+                        <td>
+                          <div className="d-flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline-info"
+                              onClick={() => handleEdit(unit)}
+                              title="Edit"
+                            >
+                              <Edit size={14} />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-danger"
+                              onClick={() => handleDelete(unit)}
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+
+              {currentUnits.length === 0 && (
+                <div className="text-center py-5">
+                  <Box size={48} className="text-muted mb-3" />
+                  <h5 className="text-muted">No units found</h5>
+                  <p className="text-muted">
+                    {searchTerm ? 'Try adjusting your search terms' : 'Add your first unit to get started'}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </Card.Body>
+      </Card>
+
+      {totalPages > 1 && (
+        <Row className="mt-4">
+          <Col className="d-flex justify-content-center">
+            <Pagination>
+              <Pagination.First 
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              />
+              <Pagination.Prev 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              />
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <Pagination.Item
+                  key={page}
+                  active={page === currentPage}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Pagination.Item>
+              ))}
+              <Pagination.Next 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              />
+              <Pagination.Last 
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              />
+            </Pagination>
+          </Col>
+        </Row>
+      )}
+
+      <Modal show={showModal} onHide={handleCloseModal} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>{editingUnit ? 'Edit Unit' : 'Add New Unit'}</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSubmit}>
+          <Modal.Body>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Unit Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="unit_name"
+                    value={formData.unit_name}
+                    onChange={handleInputChange}
+                    isInvalid={!!errors.unit_name}
+                    placeholder="Enter unit name (e.g., kg, litre)"
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {errors.unit_name}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value={1}>Active</option>
+                    <option value={0}>Inactive</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={loading}>
+              {loading ? 'Saving...' : (editingUnit ? 'Update' : 'Save')}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete <strong>{unitToDelete?.unit_name}</strong>?
+          This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmDelete}>
+            Delete
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
+  );
+};
+
+export default UnitMaster;

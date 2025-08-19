@@ -33,6 +33,9 @@ const States = React.lazy(() => import('./../views/apps/States')) // Updated to 
 const Districts = React.lazy(() => import('./../views/apps/Districts')) // Updated to use <Districts /> component
 const Zones = React.lazy(() => import('./../views/apps/Zones')) // Updated to use <Zones /> component
 const Catagories  = React.lazy(() => import('../components/commonMaster/Catagories'))
+const UnitMaster = React.lazy(() => import('../components/hotels/UnitMaster'))
+const AddonsMaster = React.lazy(() => import('../components/hotels/AddonsMaster'))
+const Menumaster = React.lazy(() => import('../components/hotels/Menumaster'))
 //const ManageAgents = React.lazy(() => import('./../views/apps/ManageAgents')) // Added ManageAgents component
 const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgent')) // Corrected import to ManageAgent component
 const City = React.lazy(() => import('../views/apps/City')) // Updated to use <City /> component
@@ -391,7 +394,24 @@ const appsRoutes: RoutesProps = {
       element: <Catagories />,
       route: PrivateRoute,
     },
-
+     {
+      path: '/apps/UnitMaster',
+      name: 'Unit Master',
+      element: <UnitMaster />,
+      route: PrivateRoute,
+    },
+     {
+      path: '/apps/AddonsMaster',
+      name: 'AddonsMaster ',
+      element: <AddonsMaster />,
+      route: PrivateRoute,
+    },
+    {
+      path: '/apps/Menumaster',
+      name: 'Menumaster ',
+      element: <Menumaster />,
+      route: PrivateRoute,
+    },
 
     // {
     //   path: '/apps/ItemGroup',

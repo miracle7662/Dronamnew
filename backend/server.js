@@ -14,6 +14,9 @@ const superadminRoutes = require('./routes/superadminRoutes');
 const agentRoutes = require('./routes/agentRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
 const catagoriesRoutes = require('./routes/CatagoriesRoutes');
+const unitMasterRoutes = require('./routes/UnitMasterRoutes');
+const addonsRoutes = require('./routes/AddonsRoutes');
+const menumasterRoutes = require('./routes/MenumasterRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +49,9 @@ app.use('/api/superadmin', superadminRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/categories', catagoriesRoutes);
+app.use('/api/units', unitMasterRoutes);
+app.use('/api/addons', addonsRoutes);
+app.use('/api/menumaster', menumasterRoutes);
 app.use('/api/auth', require('./routes/authRoutes'));
 
 // Basic route
@@ -61,7 +67,10 @@ app.get("/", (req, res) => {
             superadmin: "/api/superadmin",
             agents: "/api/agents",
             hotels: "/api/hotels",
-            categories: "/api/categories"
+            categories: "/api/categories",
+            units: "/api/units",
+            addons: "/api/addons",
+            menumaster: "/api/menumaster"
         }
     });
 });
