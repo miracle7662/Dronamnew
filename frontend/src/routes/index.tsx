@@ -36,6 +36,8 @@ const Catagories  = React.lazy(() => import('../components/commonMaster/Catagori
 const UnitMaster = React.lazy(() => import('../components/hotels/UnitMaster'))
 const AddonsMaster = React.lazy(() => import('../components/hotels/AddonsMaster'))
 const Menumaster = React.lazy(() => import('../components/hotels/Menumaster'))
+const MenuDetails = React.lazy(() => import('../components/hotels/MenuDetails'))
+const Menuaddon = React.lazy(() => import('../components/hotels/Menuaddon'))
 //const ManageAgents = React.lazy(() => import('./../views/apps/ManageAgents')) // Added ManageAgents component
 const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgent')) // Corrected import to ManageAgent component
 const City = React.lazy(() => import('../views/apps/City')) // Updated to use <City /> component
@@ -412,7 +414,18 @@ const appsRoutes: RoutesProps = {
       element: <Menumaster />,
       route: PrivateRoute,
     },
-
+    {
+      path: '/apps/MenuDetails',
+      name: 'Menu Details',
+      element: <MenuDetails />,
+      route: PrivateRoute,
+    },
+    {
+      path: '/apps/Menuaddon',
+      name: 'Menuaddon',
+      element: <Menuaddon />,
+      route: PrivateRoute,
+    },
     // {
     //   path: '/apps/ItemGroup',
     //   name: 'ItemGroup',

@@ -54,18 +54,12 @@ const UnitMaster = () => {
     try {
       const response = await axios.get('http://localhost:3001/api/units');
       if (response && response.data) {
-        setUnits(response.data);
+        setUnits(response.data.filter(unit => unit.status === 1));
       } else {
         setError('Invalid response from server');
       }
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
-      } else if (err.message) {
-        setError(err.message);
-      } else {
-        setError('Failed to load units');
-      }
+      setError(err.response?.data?.error || err.message || 'Failed to load units');
     } finally {
       setLoading(false);
     }
@@ -141,12 +135,16 @@ const UnitMaster = () => {
   const confirmDelete = async () => {
     if (unitToDelete) {
       try {
-        await axios.delete(`http://localhost:3001/api/units/${unitToDelete.unit_id}`);
-        await loadUnits();
+        const userId = user?.id || 1;
+        await axios.delete(`http://localhost:3001/api/units/${unitToDelete.unit_id}`, {
+          data: { updated_by_id: userId }
+        });
+        // On success, close modal and reload units
         setShowDeleteModal(false);
         setUnitToDelete(null);
+        await loadUnits();
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to delete unit');
+        setError(err.response?.data?.error || 'Failed to delete unit. Ensure no dependent records exist or use soft delete.');
       }
     }
   };
@@ -379,7 +377,7 @@ const UnitMaster = () => {
         </Modal.Header>
         <Modal.Body>
           Are you sure you want to delete <strong>{unitToDelete?.unit_name}</strong>?
-          This action cannot be undone.
+          This action cannot be undone. Note: Deletion may fail if this unit is referenced by other records.
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>

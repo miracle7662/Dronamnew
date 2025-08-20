@@ -17,6 +17,9 @@ const catagoriesRoutes = require('./routes/CatagoriesRoutes');
 const unitMasterRoutes = require('./routes/UnitMasterRoutes');
 const addonsRoutes = require('./routes/AddonsRoutes');
 const menuMasterRoutes = require('./routes/MenumasterRoutes');
+const menuDetailsRoutes = require('./routes/MenuDetailsRoutes');
+const menuaddonRoutes = require('./routes/MenuaddonRoutes');
+
 
 
 const app = express();
@@ -61,6 +64,8 @@ app.use('/api/categories', catagoriesRoutes);
 app.use('/api/units', unitMasterRoutes);
 app.use('/api/addons', addonsRoutes);
 app.use('/api/menumaster', menuMasterRoutes);
+app.use('/api/menudetails', menuDetailsRoutes);
+app.use('/api/menuaddons', menuaddonRoutes);
 
 // Basic route
 app.get("/", (req, res) => {
@@ -78,7 +83,9 @@ app.get("/", (req, res) => {
             categories: "/api/categories",
             units: "/api/units",
             addons: "/api/addons",
-            menus: "/api/menumaster"
+            menus: "/api/menumaster",
+            menuDetails: "/api/menudetails",
+            menuAddons: "/api/menuaddons"
         }
     });
 });
