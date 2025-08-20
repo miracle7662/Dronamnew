@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const { pool, testConnection, initDatabase } = require("./config/database"); // ✅ Changed from db to pool
+const { pool, testConnection, initDatabase } = require("./config/database");
 
 // Import routes
 const countryRoutes = require('./routes/countryRoutes');
@@ -16,7 +16,8 @@ const hotelRoutes = require('./routes/hotelRoutes');
 const catagoriesRoutes = require('./routes/CatagoriesRoutes');
 const unitMasterRoutes = require('./routes/UnitMasterRoutes');
 const addonsRoutes = require('./routes/AddonsRoutes');
-const menumasterRoutes = require('./routes/MenumasterRoutes');
+const menuMasterRoutes = require('./routes/MenumasterRoutes');
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +35,14 @@ app.use(express.urlencoded({ extended: true }));
     if (connected) {
         await initDatabase();
         console.log("📊 MySQL Database initialized successfully!");
+
+        // Check existing tables
+        const [tables] = await pool.query("SHOW TABLES;");
+        console.log("Existing tables:", tables);
+
+        // Log contents of menumaster table
+        const [menuItems] = await pool.query("SELECT * FROM menumaster;");
+        console.log("Menu items in menumaster:", menuItems);
     } else {
         console.error("❌ Failed to connect to MySQL database!");
         process.exit(1);
@@ -51,8 +60,7 @@ app.use('/api/hotels', hotelRoutes);
 app.use('/api/categories', catagoriesRoutes);
 app.use('/api/units', unitMasterRoutes);
 app.use('/api/addons', addonsRoutes);
-app.use('/api/menumaster', menumasterRoutes);
-app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/menumaster', menuMasterRoutes);
 
 // Basic route
 app.get("/", (req, res) => {
@@ -70,7 +78,7 @@ app.get("/", (req, res) => {
             categories: "/api/categories",
             units: "/api/units",
             addons: "/api/addons",
-            menumaster: "/api/menumaster"
+            menus: "/api/menumaster"
         }
     });
 });

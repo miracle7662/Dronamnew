@@ -195,14 +195,14 @@ CREATE TABLE IF NOT EXISTS menumaster (
     menu_name VARCHAR(150) NOT NULL,
     description TEXT,
     food_type ENUM('veg', 'nonveg') NOT NULL DEFAULT 'veg',
-    category_id INT NOT NULL,
+    categories_id INT NOT NULL,
     preparation_time TIME,
     status INTEGER DEFAULT 1,
     created_by_id INT NOT NULL,
     created_by_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_by_id INT DEFAULT NULL,
     updated_by_date DATETIME,
-    FOREIGN KEY (category_id) REFERENCES categories(categories_id)
+    FOREIGN KEY (categories_id) REFERENCES categories(categories_id)
 );
 
 CREATE TABLE IF NOT EXISTS menu_details (
