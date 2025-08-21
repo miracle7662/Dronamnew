@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Container, 
   Row, 
@@ -17,16 +17,17 @@ import {
   Plus, 
   Search, 
   Edit, 
-  Trash2, 
+  Trash2,
   Tag
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthContext } from '@/common/context/useAuthContext';
 
-const CategoryMaster = () => {
+const Categories = () => {
   const { user } = useAuthContext();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -74,7 +75,10 @@ const CategoryMaster = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
+    let val = type === 'checkbox' ? (checked ? 1 : 0) : value;
+    if (name === 'status') {
+      val = parseInt(value, 10);
+    }
     setFormData(prev => ({
       ...prev,
       [name]: val
@@ -110,7 +114,14 @@ const CategoryMaster = () => {
           ...formData,
           updated_by_id: userId
         });
-        await loadCategories();
+        // Optimistically update local state with the new status
+        setCategories(prev => 
+          prev.map(category => 
+            category.categories_id === editingCategory.categories_id 
+              ? { ...category, ...formData, status: formData.status } 
+              : category
+          )
+        );
       } else {
         const response = await axios.post('http://localhost:3001/api/categories', {
           ...formData,
@@ -145,13 +156,17 @@ const CategoryMaster = () => {
 
   const confirmDelete = async () => {
     if (categoryToDelete) {
+      setDeleteLoading(true);
       try {
         await axios.delete(`http://localhost:3001/api/categories/${categoryToDelete.categories_id}`);
-        await loadCategories();
+        // Update local state by removing the deleted category
+        setCategories(prev => prev.filter(category => category.categories_id !== categoryToDelete.categories_id));
         setShowDeleteModal(false);
         setCategoryToDelete(null);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete category');
+      } finally {
+        setDeleteLoading(false);
       }
     }
   };
@@ -167,10 +182,12 @@ const CategoryMaster = () => {
     setErrors({});
   };
 
-  const filteredCategories = categories.filter(category =>
-    category.categories_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCategories = useMemo(() => {
+    return categories.filter(category =>
+      category.categories_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [categories, searchTerm]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -251,7 +268,7 @@ const CategoryMaster = () => {
                         <td>
                           <strong>{category.categories_name}</strong>
                         </td>
-                        <td>{category.description}</td>
+                        <td>{category.description || <span className="text-muted">-</span>}</td>
                         <td>
                           {category.status === 1 ? (
                             <Badge bg="success">Active</Badge>
@@ -274,6 +291,7 @@ const CategoryMaster = () => {
                               variant="outline-danger"
                               onClick={() => handleDelete(category)}
                               title="Delete"
+                              disabled={deleteLoading}
                             >
                               <Trash2 size={14} />
                             </Button>
@@ -413,8 +431,12 @@ const CategoryMaster = () => {
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDelete}>
-            Delete
+          <Button 
+            variant="danger" 
+            onClick={confirmDelete}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? 'Processing...' : 'Delete'}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -422,4 +444,4 @@ const CategoryMaster = () => {
   );
 };
 
-export default CategoryMaster;
+export default Categories;

@@ -2,22 +2,28 @@ const express = require('express');
 const MenuaddonController = require('../controllers/MenuaddonController');
 const router = express.Router();
 
-// GET /api/menuaddons - Get all menu addons
+// ✅ Get all menu addons
+// GET /api/menuaddons
 router.get('/', MenuaddonController.getAllMenuAddons);
 
-// GET /api/menuaddons/menu/:menuId - Get menu addons by menu ID
-router.get('/menu/:menuId', MenuaddonController.getMenuAddonsByMenuId);
+// ✅ Get menu addons by menu ID
+// GET /api/menuaddons/menu/:menu_id
+router.get('/menu/:menu_id', MenuaddonController.getMenuAddonsByMenuId);
 
-// POST /api/menuaddons - Create new menu addon with multiple addons
+// ✅ Create new menu addons (replace existing addons for the menu)
+// POST /api/menuaddons
 router.post('/', MenuaddonController.createMenuAddon);
 
-// PUT /api/menuaddons/:menuaddon_id - Update menu addon (will replace all addons for the menu)
-router.put('/:menuaddon_id', MenuaddonController.updateMenuAddon);
+// ✅ Update menu addons (replace all addons for a given menu_id)
+// PUT /api/menuaddons/menu/:menu_id
+router.put('/menu/:menu_id', MenuaddonController.updateMenuAddon);
 
-// DELETE /api/menuaddons/:menuaddon_id - Delete specific menu addon
+// ✅ Delete single menuaddon by ID
+// DELETE /api/menuaddons/:menuaddon_id
 router.delete('/:menuaddon_id', MenuaddonController.deleteMenuAddon);
 
-// DELETE /api/menuaddons/menu/:menu_id - Delete all addons for a specific menu
+// ✅ Delete all addons for a specific menu
+// DELETE /api/menuaddons/menu/:menu_id
 router.delete('/menu/:menu_id', MenuaddonController.deleteMenuAddonsByMenuId);
 
 module.exports = router;

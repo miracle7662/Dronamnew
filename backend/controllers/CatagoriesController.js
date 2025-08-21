@@ -33,7 +33,7 @@ const getCategoryById = async (req, res) => {
 
 // Create new category
 const createCategory = async (req, res) => {
-  const { categories_name, description, created_by_id, status = 1 } = req.body;
+  const { categories_name, description, status = 1, created_by_id, } = req.body;
   if (!categories_name || !description) {
     return res.status(400).json({ error: 'Category name and description are required' });
   }
@@ -93,19 +93,32 @@ const updateCategory = async (req, res) => {
   }
 };
 
-// Delete category
+// Delete category - permanent deletion from database
 const deleteCategory = async (req, res) => {
   try {
+    // First check if category exists
+    const [existing] = await pool.query(`
+      SELECT * FROM categories 
+      WHERE categories_id = ?
+    `, [req.params.id]);
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // Perform actual deletion from database
     const [result] = await pool.query(`
       DELETE FROM categories 
       WHERE categories_id = ?
     `, [req.params.id]);
 
-    result.affectedRows > 0
-      ? res.json({ message: 'Category deleted successfully!' })
-      : res.status(404).json({ error: 'Category not found' });
+    if (result.affectedRows > 0) {
+      res.json({ message: 'Category deleted successfully!' });
+    } else {
+      res.status(404).json({ error: 'Category not found' });
+    }
   } catch (err) {
-    const isForeignKeyError = err.code === 'ER_ROW_IS_REFERENCED';
+    const isForeignKeyError = err.code === 'ER_ROW_IS_REFERENCED' || err.errno === 1451;
     res.status(isForeignKeyError ? 400 : 500).json({ 
       error: isForeignKeyError ? 'Cannot delete category: it has associated records' : 'Failed to delete category', 
       details: err.message 
