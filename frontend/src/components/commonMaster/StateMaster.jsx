@@ -11,7 +11,8 @@ import {
   Alert,
   Badge,
   InputGroup,
-  Pagination
+  Pagination,
+  Stack
 } from 'react-bootstrap';
 import { 
   Plus, 
@@ -32,7 +33,7 @@ const StateMaster = () => {
   const [editingState, setEditingState] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [stateToDelete, setStateToDelete] = useState(null);
 
@@ -330,44 +331,78 @@ const StateMaster = () => {
                   </p>
                 </div>
               )}
+              {!loading && currentStates.length > 0 && (
+                <Stack
+                  className="p-2 border-top d-flex flex-row align-items-center justify-content-between"
+                  style={{ gap: '6px', padding: '8px 12px' }}
+                >
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1); // Reset to first page on page size change
+                    }}
+                    style={{
+                      borderRadius: '4px',
+                      padding: '2px 4px',
+                      fontSize: '12px',
+                      backgroundColor: 'transparent',
+                      color: '#6c757d',
+                      cursor: 'pointer',
+                      width: '80px',
+                      height: '24px',
+                    }}
+                  >
+                    {[10, 20, 30].map((pageSize) => (
+                      <option key={pageSize} value={pageSize}>
+                        {pageSize}
+                      </option>
+                    ))}
+                  </select>
+                  <Pagination
+                    className="m-0"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0px', marginRight: '20px' }}
+                  >
+                    <Pagination.Prev
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      aria-label="Previous page"
+                      style={{
+                        color: currentPage === 1 ? '#d3d3d3' : '#6c757d',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        backgroundColor: 'transparent',
+                        fontSize: '12px',
+                        lineHeight: '1',
+                      }}
+                    >
+                      <i className="fi fi-rr-angle-left" style={{ fontSize: '12px' }} />
+                    </Pagination.Prev>
+                    <Pagination.Item active>
+                      {currentPage}
+                    </Pagination.Item>
+                    <Pagination.Next
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      aria-label="Next page"
+                      style={{
+                        color: currentPage === totalPages ? '#d3d3d3' : '#6c757d',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        backgroundColor: 'transparent',
+                        fontSize: '12px',
+                        lineHeight: '1',
+                      }}
+                    >
+                      <i className="fi fi-rr-angle-right" style={{ fontSize: '12px' }} />
+                    </Pagination.Next>
+                  </Pagination>
+                </Stack>
+              )}
             </>
           )}
         </Card.Body>
       </Card>
-
-      {totalPages > 1 && (
-        <Row className="mt-4">
-          <Col className="d-flex justify-content-center">
-            <Pagination>
-              <Pagination.First 
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              />
-              <Pagination.Prev 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              />
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Pagination.Item
-                  key={page}
-                  active={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              />
-              <Pagination.Last 
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              />
-            </Pagination>
-          </Col>
-        </Row>
-      )}
 
       <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>

@@ -11,7 +11,8 @@ import {
   Alert,
   Badge,
   InputGroup,
-  Pagination
+  Pagination,
+  Stack
 } from 'react-bootstrap';
 import { 
   Plus, 
@@ -32,7 +33,7 @@ const UnitMaster = () => {
   const [editingUnit, setEditingUnit] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [unitToDelete, setUnitToDelete] = useState(null);
 
@@ -54,7 +55,7 @@ const UnitMaster = () => {
     try {
       const response = await axios.get('http://localhost:3001/api/units');
       if (response && response.data) {
-        setUnits(response.data.filter(unit => unit.status === 1));
+        setUnits(response.data); // Fetch all units, assuming API supports Inactive units
       } else {
         setError('Invalid response from server');
       }
@@ -66,12 +67,12 @@ const UnitMaster = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
+    const { name, value} = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: val
+      [name]: name === 'status' ? Number(value) : value
     }));
+    
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -100,6 +101,16 @@ const UnitMaster = () => {
           ...formData,
           updated_by_id: userId
         });
+        // Optimistic update with the latest formData.status
+        setUnits(prev =>
+          prev.map(unit =>
+            unit.unit_id === editingUnit.unit_id
+              ? { ...unit, ...formData, status: formData.status }
+              : unit
+          )
+        );
+        // Force re-render or sync with local state
+        setUnits(prev => [...prev]); // Trigger re-render
       } else {
         const response = await axios.post('http://localhost:3001/api/units', {
           ...formData,
@@ -109,9 +120,20 @@ const UnitMaster = () => {
           setUnits(prev => [response.data.unit, ...prev]);
         }
       }
-      await loadUnits();
+      // Reload only for new units to avoid overwriting edits
+      if (!editingUnit) await loadUnits();
       handleCloseModal();
     } catch (err) {
+      // Rollback optimistic update on failure
+      if (editingUnit) {
+        setUnits(prev =>
+          prev.map(unit =>
+            unit.unit_id === editingUnit.unit_id
+              ? { ...unit, status: editingUnit.status }
+              : unit
+          )
+        );
+      }
       setError(err.response?.data?.error || 'Failed to save unit');
     } finally {
       setLoading(false);
@@ -139,10 +161,10 @@ const UnitMaster = () => {
         await axios.delete(`http://localhost:3001/api/units/${unitToDelete.unit_id}`, {
           data: { updated_by_id: userId }
         });
-        // On success, close modal and reload units
+        setUnits(prev => prev.filter(unit => unit.unit_id !== unitToDelete.unit_id)); // Optimistic delete
         setShowDeleteModal(false);
         setUnitToDelete(null);
-        await loadUnits();
+        await loadUnits(); // Sync with server
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to delete unit. Ensure no dependent records exist or use soft delete.');
       }
@@ -283,44 +305,78 @@ const UnitMaster = () => {
                   </p>
                 </div>
               )}
+              {!loading && currentUnits.length > 0 && (
+                <Stack
+                  className="p-2 border-top d-flex flex-row align-items-center justify-content-between"
+                  style={{ gap: '6px', padding: '8px 12px' }}
+                >
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1); // Reset to first page on page size change
+                    }}
+                    style={{
+                      borderRadius: '4px',
+                      padding: '2px 4px',
+                      fontSize: '12px',
+                      backgroundColor: 'transparent',
+                      color: '#6c757d',
+                      cursor: 'pointer',
+                      width: '80px',
+                      height: '24px',
+                    }}
+                  >
+                    {[10, 20, 30].map((pageSize) => (
+                      <option key={pageSize} value={pageSize}>
+                        {pageSize}
+                      </option>
+                    ))}
+                  </select>
+                  <Pagination
+                    className="m-0"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0px', marginRight: '20px' }}
+                  >
+                    <Pagination.Prev
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      aria-label="Previous page"
+                      style={{
+                        color: currentPage === 1 ? '#d3d3d3' : '#6c757d',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        backgroundColor: 'transparent',
+                        fontSize: '12px',
+                        lineHeight: '1',
+                      }}
+                    >
+                      <i className="fi fi-rr-angle-left" style={{ fontSize: '12px' }} />
+                    </Pagination.Prev>
+                    <Pagination.Item active>
+                      {currentPage}
+                    </Pagination.Item>
+                    <Pagination.Next
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      aria-label="Next page"
+                      style={{
+                        color: currentPage === totalPages ? '#d3d3d3' : '#6c757d',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        backgroundColor: 'transparent',
+                        fontSize: '12px',
+                        lineHeight: '1',
+                      }}
+                    >
+                      <i className="fi fi-rr-angle-right" style={{ fontSize: '12px' }} />
+                    </Pagination.Next>
+                  </Pagination>
+                </Stack>
+              )}
             </>
           )}
         </Card.Body>
       </Card>
-
-      {totalPages > 1 && (
-        <Row className="mt-4">
-          <Col className="d-flex justify-content-center">
-            <Pagination>
-              <Pagination.First 
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              />
-              <Pagination.Prev 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              />
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Pagination.Item
-                  key={page}
-                  active={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              />
-              <Pagination.Last 
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              />
-            </Pagination>
-          </Col>
-        </Row>
-      )}
 
       <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>

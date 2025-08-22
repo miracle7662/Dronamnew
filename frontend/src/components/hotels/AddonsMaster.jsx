@@ -11,7 +11,10 @@ import {
   Alert,
   Badge,
   InputGroup,
-  Pagination
+  Pagination,
+  OverlayTrigger,
+  Tooltip,
+  Stack
 } from 'react-bootstrap';
 import { 
   Plus, 
@@ -33,7 +36,7 @@ const AddonMaster = () => {
   const [editingAddon, setEditingAddon] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [addonToDelete, setAddonToDelete] = useState(null);
 
@@ -81,12 +84,12 @@ const AddonMaster = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: val
+      [name]: name === 'status' ? Number(value) : value
     }));
+  
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -112,6 +115,9 @@ const AddonMaster = () => {
     if (!formData.unit_conversion.trim()) {
       newErrors.unit_conversion = 'Unit conversion is required';
     }
+    if (![0, 1].includes(formData.status)) {
+      newErrors.status = 'Status must be Active (1) or Inactive (0)';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -123,10 +129,16 @@ const AddonMaster = () => {
     try {
       const userId = user?.id || 1;
       if (editingAddon) {
-        await axios.put(`http://localhost:3001/api/addons/${editingAddon.addon_id}`, {
+        const response = await axios.put(`http://localhost:3001/api/addons/${editingAddon.addon_id}`, {
           ...formData,
           updated_by_id: userId
         });
+        if (response.status === 200) {
+          // Update the local state immediately to reflect the change
+          setAddons(addons.map(addon => 
+            addon.addon_id === editingAddon.addon_id ? { ...addon, ...formData } : addon
+          ));
+        }
       } else {
         const response = await axios.post('http://localhost:3001/api/addons', {
           ...formData,
@@ -136,7 +148,7 @@ const AddonMaster = () => {
           setAddons(prev => [response.data.addon, ...prev]);
         }
       }
-      await loadAddons();
+      await loadAddons(); // Refresh to ensure backend sync
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save addon');
@@ -148,12 +160,13 @@ const AddonMaster = () => {
   const handleEdit = (addon) => {
     setEditingAddon(addon);
     setFormData({
-      addon_name: addon.addon_name,
+      addon_name: addon.addon_name || '',
       description: addon.description || '',
       rate: addon.rate || '',
       unit_id: addon.unit_id || '',
       unit_conversion: addon.unit_conversion || '',
-      status: addon.status !== undefined ? addon.status : 1
+      status: addon.status !== undefined ? Number(addon.status) : 1,
+      created_by_id: null
     });
     setShowModal(true);
   };
@@ -289,22 +302,32 @@ const AddonMaster = () => {
                         </td>
                         <td>
                           <div className="d-flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline-info"
-                              onClick={() => handleEdit(addon)}
-                              title="Edit"
+                            <OverlayTrigger
+                              placement="top"
+                              overlay={<Tooltip id={`tooltip-edit-${addon.addon_id}`}>Edit addon</Tooltip>}
                             >
-                              <Edit size={14} />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              onClick={() => handleDelete(addon)}
-                              title="Delete"
+                              <Button
+                                size="sm"
+                                variant="outline-info"
+                                onClick={() => handleEdit(addon)}
+                                title="Edit"
+                              >
+                                <Edit size={14} />
+                              </Button>
+                            </OverlayTrigger>
+                            <OverlayTrigger
+                              placement="top"
+                              overlay={<Tooltip id={`tooltip-delete-${addon.addon_id}`}>Delete addon</Tooltip>}
                             >
-                              <Trash2 size={14} />
-                            </Button>
+                              <Button
+                                size="sm"
+                                variant="outline-danger"
+                                onClick={() => handleDelete(addon)}
+                                title="Delete"
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </OverlayTrigger>
                           </div>
                         </td>
                       </tr>
@@ -322,45 +345,80 @@ const AddonMaster = () => {
                   </p>
                 </div>
               )}
+              {!loading && currentAddons.length > 0 && (
+                <Stack
+                  className="p-2 border-top d-flex flex-row align-items-center justify-content-between"
+                  style={{ gap: '6px', padding: '8px 12px' }}
+                >
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1); // Reset to first page on page size change
+                    }}
+                    style={{
+                      borderRadius: '4px',
+                      padding: '2px 4px',
+                      fontSize: '12px',
+                      backgroundColor: 'transparent',
+                      color: '#6c757d',
+                      cursor: 'pointer',
+                      width: '80px',
+                      height: '24px',
+                    }}
+                  >
+                    {[10, 20, 30].map((pageSize) => (
+                      <option key={pageSize} value={pageSize}>
+                        {pageSize}
+                      </option>
+                    ))}
+                  </select>
+                  <Pagination
+                    className="m-0"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0px', marginRight: '20px' }}
+                  >
+                    <Pagination.Prev
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      aria-label="Previous page"
+                      style={{
+                        color: currentPage === 1 ? '#d3d3d3' : '#6c757d',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        backgroundColor: 'transparent',
+                        fontSize: '12px',
+                        lineHeight: '1',
+                      }}
+                    >
+                      <i className="fi fi-rr-angle-left" style={{ fontSize: '12px' }} />
+                    </Pagination.Prev>
+                    <Pagination.Item active>
+                      {currentPage}
+                    </Pagination.Item>
+                    <Pagination.Next
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      aria-label="Next page"
+                      style={{
+                        color: currentPage === totalPages ? '#d3d3d3' : '#6c757d',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        backgroundColor: 'transparent',
+                        fontSize: '12px',
+                        lineHeight: '1',
+                      }}
+                    >
+                      <i className="fi fi-rr-angle-right" style={{ fontSize: '12px' }} />
+                    </Pagination.Next>
+                  </Pagination>
+                </Stack>
+              )}
             </>
           )}
         </Card.Body>
       </Card>
 
-      {totalPages > 1 && (
-        <Row className="mt-4">
-          <Col className="d-flex justify-content-center">
-            <Pagination>
-              <Pagination.First 
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-              />
-              <Pagination.Prev 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              />
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Pagination.Item
-                  key={page}
-                  active={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Pagination.Item>
-              ))}
-              <Pagination.Next 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              />
-              <Pagination.Last 
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              />
-            </Pagination>
-          </Col>
-        </Row>
-      )}
-
+      {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>{editingAddon ? 'Edit Addon' : 'Add New Addon'}</Modal.Title>
@@ -443,15 +501,19 @@ const AddonMaster = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Status</Form.Label>
+                  <Form.Label>Status *</Form.Label>
                   <Form.Select
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
+                    isInvalid={!!errors.status}
                   >
                     <option value={1}>Active</option>
                     <option value={0}>Inactive</option>
                   </Form.Select>
+                  <Form.Control.Feedback type="invalid">
+                    {errors.status}
+                  </Form.Control.Feedback>
                 </Form.Group>
               </Col>
             </Row>
@@ -486,6 +548,7 @@ const AddonMaster = () => {
         </Form>
       </Modal>
 
+      {/* Delete Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Confirm Delete</Modal.Title>

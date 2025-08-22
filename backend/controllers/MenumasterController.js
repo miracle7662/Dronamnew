@@ -74,9 +74,18 @@ const createMenuItem = async (req, res) => {
 };
 
 // Update menu item
+// Update menu item
 const updateMenuItem = async (req, res) => {
   console.log(`PUT /api/menumaster/${req.params.id} request received`);
-  const { menu_name, description, food_type, categories_id, preparation_time, updated_by_id } = req.body;
+  const { 
+    menu_name, 
+    description, 
+    food_type, 
+    categories_id, 
+    preparation_time, 
+    updated_by_id, 
+    status 
+  } = req.body;
   const { id } = req.params;
 
   // Validate required fields
@@ -96,21 +105,44 @@ const updateMenuItem = async (req, res) => {
     return res.status(400).json({ error: 'Preparation time must be in HH:MM:SS format (e.g., 00:20:00)' });
   }
 
+  // Validate status (must be 0 or 1)
+  const statusValue = (status === 0 || status === 1) ? status : 1; // default to Active if not provided
+
   try {
     if (!pool) throw new Error('Database pool is not initialized');
-    console.log('Executing UPDATE query with values:', { menu_name, description, food_type, categories_id, prepTime, updated_by_id, id });
+    console.log('Executing UPDATE query with values:', { 
+      menu_name, 
+      description, 
+      food_type, 
+      categories_id, 
+      prepTime, 
+      status: statusValue, 
+      updated_by_id, 
+      id 
+    });
+
     const [result] = await pool.query(`
       UPDATE menumaster 
-      SET menu_name = ?, description = ?, food_type = ?, categories_id = ?, preparation_time = ?, 
-          updated_by_id = ?, updated_by_date = CURRENT_TIMESTAMP
+      SET menu_name = ?, 
+          description = ?, 
+          food_type = ?, 
+          categories_id = ?, 
+          preparation_time = ?, 
+          status = ?, 
+          updated_by_id = ?, 
+          updated_by_date = CURRENT_TIMESTAMP
       WHERE menu_id = ?
-    `, [menu_name, description || null, food_type, categories_id, prepTime, updated_by_id, id]);
+    `, [menu_name, description || null, food_type, categories_id, prepTime, statusValue, updated_by_id, id]);
 
     if (result.affectedRows === 0) {
       console.log('No rows affected, menu_id not found:', id);
       return res.status(404).json({ error: 'Menu item not found' });
     }
-    res.json({ message: 'Menu item updated successfully!', updated_at: new Date().toISOString() });
+
+    res.json({ 
+      message: 'Menu item updated successfully!', 
+      updated_at: new Date().toISOString() 
+    });
   } catch (err) {
     console.error('Update error:', err);
     const isUniqueError = err.code === 'ER_DUP_ENTRY';
@@ -125,7 +157,7 @@ const updateMenuItem = async (req, res) => {
   }
 };
 
-// Delete menu item (soft delete)
+
 // Delete menu item (permanent deletion)
 const deleteMenuItem = async (req, res) => {
   console.log(`DELETE /api/menumaster/${req.params.id} request received`);

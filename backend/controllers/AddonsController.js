@@ -67,8 +67,9 @@ const { addon_name, description, rate, unit_id, unit_conversion, created_by_id }
 
 // Update addon
 const updateAddon = async (req, res) => {
-  const { addon_name, description, rate, unit_id, unit_conversion, updated_by_id } = req.body;
+  const { addon_name, description, rate, unit_id, unit_conversion, status, updated_by_id } = req.body;
   const { id } = req.params;
+
   if (!addon_name || !description || !rate || !unit_id || !unit_conversion) {
     return res.status(400).json({ error: 'Addon name, description, rate, unit_id, and unit_conversion are required' });
   }
@@ -76,10 +77,16 @@ const updateAddon = async (req, res) => {
   try {
     const [result] = await pool.query(`
       UPDATE addonsMaster 
-      SET addon_name = ?, description = ?, rate = ?, unit_id = ?, unit_conversion = ?, 
-          updated_by_id = ?, updated_by_date = CURRENT_TIMESTAMP 
+      SET addon_name = ?, 
+          description = ?, 
+          rate = ?, 
+          unit_id = ?, 
+          unit_conversion = ?, 
+          status = ?, 
+          updated_by_id = ?, 
+          updated_by_date = CURRENT_TIMESTAMP 
       WHERE addon_id = ?
-    `, [addon_name, description, rate, unit_id, unit_conversion, updated_by_id, id]);
+    `, [addon_name, description, rate, unit_id, unit_conversion, status, updated_by_id, id]);
 
     result.affectedRows > 0
       ? res.json({ message: 'Addon updated successfully!' })
