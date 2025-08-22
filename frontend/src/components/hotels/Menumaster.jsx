@@ -61,7 +61,6 @@ const MenuMaster = () => {
     try {
       const response = await axios.get('http://localhost:3001/api/menumaster');
       if (response && response.data) {
-        // Ensure categories_name is included, fallback to fetching from categories if needed
         const itemsWithCategory = response.data.map(item => ({
           ...item,
           categories_name: item.categories_name || (categories.find(cat => cat.categories_id === item.categories_id)?.categories_name || '-')
@@ -87,11 +86,11 @@ const MenuMaster = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? (checked ? 1 : 0) : value;
+    const { name, value } = e.target;
+    const val = name === 'status' ? Number(value) : value;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'status' ? Number(val) : val
+      [name]: val
     }));
     if (errors[name]) {
       setErrors(prev => ({
@@ -115,9 +114,6 @@ const MenuMaster = () => {
     if (formData.preparation_time && !/^\d{2}:\d{2}:\d{2}$/.test(formData.preparation_time)) {
       newErrors.preparation_time = 'Preparation time must be in HH:MM:SS format';
     }
-    if (![0, 1].includes(formData.status)) {
-      newErrors.status = 'Invalid status value';
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -134,13 +130,12 @@ const MenuMaster = () => {
           updated_by_id: userId
         });
         if (response.status === 200) {
-          // Immediately update local state
           setMenuItems(prevItems => prevItems.map(item => 
             item.menu_id === editingMenuItem.menu_id 
               ? { 
                   ...item, 
                   ...formData,
-                  categories_name: categories.find(cat => cat.categories_id === formData.categories_id)?.categories_name || '-' 
+                  categories_name: categories.find(cat => cat.categories_id === Number(formData.categories_id))?.categories_name || '-' 
                 } 
               : item
           ));
@@ -153,12 +148,11 @@ const MenuMaster = () => {
         if (response.data.menuItem) {
           const newItem = {
             ...response.data.menuItem,
-            categories_name: categories.find(cat => cat.categories_id === formData.categories_id)?.categories_name || '-'
+            categories_name: categories.find(cat => cat.categories_id === Number(formData.categories_id))?.categories_name || '-'
           };
           setMenuItems(prev => [newItem, ...prev]);
         }
       }
-      await loadMenuItems(); // Refresh from server to ensure sync
       handleCloseModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save menu item');
@@ -175,7 +169,7 @@ const MenuMaster = () => {
       food_type: menuItem.food_type || 'veg',
       categories_id: menuItem.categories_id || '',
       preparation_time: menuItem.preparation_time || '',
-      status: menuItem.status !== undefined ? Number(menuItem.status) : 1
+      status: Number(menuItem.status) || 1
     });
     setShowModal(true);
   };
@@ -192,7 +186,7 @@ const MenuMaster = () => {
         await axios.delete(`http://localhost:3001/api/menumaster/${menuItemToDelete.menu_id}`, {
           data: { updated_by_id: userId }
         });
-        await loadMenuItems();
+        setMenuItems(prev => prev.filter(item => item.menu_id !== menuItemToDelete.menu_id));
         setShowDeleteModal(false);
         setMenuItemToDelete(null);
       } catch (err) {
@@ -283,7 +277,7 @@ const MenuMaster = () => {
             </div>
           ) : (
             <>
-              <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+              <div className="table-responsive" style={{ maxHeight: '370px', overflowY: 'auto' }}>
                 <Table hover className="mb-0">
                   <thead className="table-light sticky-top bg-white" style={{ zIndex: 1 }}>
                     <tr>
@@ -361,7 +355,7 @@ const MenuMaster = () => {
                     value={itemsPerPage}
                     onChange={(e) => {
                       setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1); // Reset to first page on page size change
+                      setCurrentPage(1);
                     }}
                     style={{
                       borderRadius: '4px',
