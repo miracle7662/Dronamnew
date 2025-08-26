@@ -126,6 +126,7 @@ const initDatabase = async () => {
         password VARCHAR(255),
         hotel_name VARCHAR(255),
         hotel_type VARCHAR(255),
+        role VARCHAR(50) NOT NULL DEFAULT 'user',
         address TEXT,
         phone VARCHAR(50),
         country_id INT,

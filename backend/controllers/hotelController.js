@@ -135,176 +135,97 @@ const getHotelById = async (req, res) => {
 };
 
 // Create new hotel
-const createHotel = async (req, res) => {
-  const {
-    email,
-    password,
-    hotel_name,
-    hotel_type,
-    role = 'hotel',
-    address,
-    phone,
-    country_id,
-    state_id,
-    district_id,
-    zone_id,
-    gst_no,
-    pan_no,
-    aadhar_no,
-    owner_name,
-    owner_mobile,
-    hotel_timeMorning,
-    hotel_timeEvening,
-    status = 1,
-    created_by_id,
-    masteruserid
-  } = req.body;
 
+// Create new hotel (safe insert)
+const createHotel = async (req, res) => {
   try {
-    // Check if email already exists
-    const emailCheckQuery = 'SELECT * FROM hotels WHERE email = ?';
-    const [existingEmails] = await pool.query(emailCheckQuery, [email]);
-    
-    if (existingEmails.length > 0) {
-      return res.status(400).json({ message: 'Email already exists' });
+    const {
+      email,
+      password,
+      hotel_name,
+      hotel_type,
+      role = 'hotel',
+      address,
+      phone,
+      country_id,
+      state_id,
+      district_id,
+      zone_id,
+      gst_no,
+      pan_no,
+      aadhar_no,
+      owner_name,
+      owner_mobile,
+      hotel_timeMorning,
+      hotel_timeEvening,
+      status = 1,
+      created_by_id,
+      masteruserid
+    } = req.body;
+
+    // Required fields
+    if (!email || !password || !hotel_name) {
+      return res.status(400).json({ message: "email, password, and hotel_name are required" });
     }
 
-    // Hash password
+    // Check email uniqueness
+    const [existing] = await pool.query("SELECT hotelid FROM hotels WHERE email = ?", [email]);
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const query = `
-      INSERT INTO hotels (
-        email, password, hotel_name, hotel_type, role, address, phone,
-        country_id, state_id, district_id, zone_id, gst_no, pan_no,
-        aadhar_no, owner_name, owner_mobile, hotel_timeMorning, hotel_timeEvening,
-        status, created_by_id, masteruserid
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    const [result] = await pool.query(query, [
-      email,
-      hashedPassword,
-      hotel_name,
-      hotel_type,
-      role,
-      address,
-      phone,
-      country_id,
-      state_id,
-      district_id,
-      zone_id,
-      gst_no,
-      pan_no,
-      aadhar_no,
-      owner_name,
-      owner_mobile,
-      hotel_timeMorning,
-      hotel_timeEvening,
-      status,
-      created_by_id,
-      masteruserid
-    ]);
+    // Dynamic query build
+    const cols = ["email", "password", "hotel_name"];
+    const placeholders = ["?", "?", "?"];
+    const values = [email, hashedPassword, hotel_name];
 
-    const newHotel = {
-      hotelid: result.insertId,
-      email,
-      hotel_name,
-      hotel_type,
-      role,
-      address,
-      phone,
-      country_id,
-      state_id,
-      district_id,
-      zone_id,
-      gst_no,
-      pan_no,
-      aadhar_no,
-      owner_name,
-      owner_mobile,
-      hotel_timeMorning,
-      hotel_timeEvening,
-      status,
-      created_by_id,
-      masteruserid
+    const addIfDefined = (col, val) => {
+      if (typeof val !== "undefined") {
+        cols.push(col);
+        placeholders.push("?");
+        values.push(val);
+      }
     };
 
-    // Send welcome email
-    try {
-      await sendWelcomeEmail(email, hotel_name);
-    } catch (emailError) {
-      console.error('Error sending welcome email:', emailError);
-    }
+    addIfDefined("hotel_type", hotel_type);
+    addIfDefined("role", role);
+    addIfDefined("address", address);
+    addIfDefined("phone", phone);
+    addIfDefined("country_id", country_id);
+    addIfDefined("state_id", state_id);
+    addIfDefined("district_id", district_id);
+    addIfDefined("zone_id", zone_id);
+    addIfDefined("gst_no", gst_no);
+    addIfDefined("pan_no", pan_no);
+    addIfDefined("aadhar_no", aadhar_no);
+    addIfDefined("owner_name", owner_name);
+    addIfDefined("owner_mobile", owner_mobile);
+    addIfDefined("hotel_timeMorning", hotel_timeMorning);
+    addIfDefined("hotel_timeEvening", hotel_timeEvening);
+    addIfDefined("status", status);
+    addIfDefined("created_by_id", created_by_id);
+    addIfDefined("masteruserid", masteruserid);
 
-    res.status(201).json(newHotel);
+    const query = `INSERT INTO hotels (${cols.join(",")}) VALUES (${placeholders.join(",")})`;
+    const [result] = await pool.query(query, values);
+
+    res.status(201).json({ hotelid: result.insertId, email, hotel_name, role, status });
   } catch (error) {
-    console.error('Error creating hotel:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Error creating hotel:", error);
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 };
 
-// Update hotel
+
+// Update hotel (safe partial update)
 const updateHotel = async (req, res) => {
   const { id } = req.params;
-  const {
-    email,
-    password,
-    hotel_name,
-    hotel_type,
-    role,
-    address,
-    phone,
-    country_id,
-    state_id,
-    district_id,
-    zone_id,
-    gst_no,
-    pan_no,
-    aadhar_no,
-    owner_name,
-    owner_mobile,
-    hotel_timeMorning,
-    hotel_timeEvening,
-    status,
-    updated_by_id
-  } = req.body;
-
   try {
-    // Check if email exists for another hotel
-    const emailCheckQuery = 'SELECT * FROM hotels WHERE email = ? AND hotelid != ?';
-    const [existingEmails] = await pool.query(emailCheckQuery, [email, id]);
-    
-    if (existingEmails.length > 0) {
-      return res.status(400).json({ message: 'Email already exists for another hotel' });
-    }
-
-    // Prepare update query
-    let query = `
-      UPDATE hotels SET
-        email = ?, 
-        hotel_name = ?, 
-        hotel_type = ?, 
-        role = ?, 
-        address = ?, 
-        phone = ?, 
-        country_id = ?, 
-        state_id = ?, 
-        district_id = ?, 
-        zone_id = ?, 
-        gst_no = ?, 
-        pan_no = ?, 
-        aadhar_no = ?, 
-        owner_name = ?, 
-        owner_mobile = ?, 
-        hotel_timeMorning = ?, 
-        hotel_timeEvening = ?, 
-        status = ?, 
-        updated_by_id = ?,
-        updated_date = NOW()
-    `;
-
-    const values = [
+    const {
       email,
+      password,
       hotel_name,
       hotel_type,
       role,
@@ -323,23 +244,69 @@ const updateHotel = async (req, res) => {
       hotel_timeEvening,
       status,
       updated_by_id
-    ];
+    } = req.body;
 
-    // Add password to update if provided
+    // If email provided, check uniqueness
+    if (typeof email !== "undefined") {
+      const [existing] = await pool.query(
+        "SELECT hotelid FROM hotels WHERE email = ? AND hotelid != ?",
+        [email, id]
+      );
+      if (existing.length > 0) {
+        return res.status(400).json({ message: "Email already exists for another hotel" });
+      }
+    }
+
+    const updates = [];
+    const values = [];
+
+    const addIfDefined = (col, val) => {
+      if (typeof val !== "undefined") {
+        updates.push(`${col} = ?`);
+        values.push(val);
+      }
+    };
+
+    addIfDefined("email", email);
+    addIfDefined("hotel_name", hotel_name);
+    addIfDefined("hotel_type", hotel_type);
+    addIfDefined("role", role);
+    addIfDefined("address", address);
+    addIfDefined("phone", phone);
+    addIfDefined("country_id", country_id);
+    addIfDefined("state_id", state_id);
+    addIfDefined("district_id", district_id);
+    addIfDefined("zone_id", zone_id);
+    addIfDefined("gst_no", gst_no);
+    addIfDefined("pan_no", pan_no);
+    addIfDefined("aadhar_no", aadhar_no);
+    addIfDefined("owner_name", owner_name);
+    addIfDefined("owner_mobile", owner_mobile);
+    addIfDefined("hotel_timeMorning", hotel_timeMorning);
+    addIfDefined("hotel_timeEvening", hotel_timeEvening);
+    addIfDefined("status", status);
+    addIfDefined("updated_by_id", updated_by_id);
+
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
-      query += `, password = ?`;
+      updates.push("password = ?");
       values.push(hashedPassword);
     }
 
-    query += ` WHERE hotelid = ?`;
+    if (updates.length === 0) {
+      return res.status(400).json({ message: "No fields provided to update" });
+    }
+
+    updates.push("updated_date = NOW()");
+    const query = `UPDATE hotels SET ${updates.join(", ")} WHERE hotelid = ?`;
     values.push(id);
 
     await pool.query(query, values);
-    res.json({ message: 'Hotel updated successfully' });
+
+    res.json({ message: "Hotel updated successfully" });
   } catch (error) {
-    console.error('Error updating hotel:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Error updating hotel:", error);
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 };
 
