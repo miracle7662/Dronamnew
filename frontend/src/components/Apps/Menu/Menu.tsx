@@ -1,671 +1,330 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ExpandedState,
-  SortingState,
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getFilteredRowModel,
-  getExpandedRowModel,
-  getSortedRowModel,
-  ColumnDef,
-  flexRender,
-} from '@tanstack/react-table';
-import { makeData, Person } from './makeData';
-import { Button, Table, Stack, Pagination, Modal, Form } from 'react-bootstrap';
-import Select from 'react-select';
-import { Trash2, Edit2, Plus, ArrowUp, ArrowDown } from 'lucide-react'; // Add ArrowUp and ArrowDown
+import makeData, { type Person } from './makeData';
+import { 
+  getAllMenuItems, 
+  getMenuItemById, 
+  createMenuItem, 
+  updateMenuItem, 
+  deleteMenuItem,
+  type MenuItem 
+} from '../../../services/menuService';
 
-const Menu = () => {
-  const columns = React.useMemo<ColumnDef<Person>[]>(
-    () => [
-      {
-        accessorKey: 'ItemName',
-        header: ({ table }) => (
-          <div className="d-flex align-items-center">
-            <IndeterminateCheckbox
-              checked={table.getIsAllRowsSelected()}
-              indeterminate={table.getIsSomeRowsSelected()}
-              onChange={table.getToggleAllRowsSelectedHandler()}
-            />
-            <Button
-              onClick={table.getToggleAllRowsExpandedHandler()}
-              variant=""
-              className="btn-icon mx-2"
-            >
-              {table.getIsAllRowsExpanded() ? (
-                <i className="fi fi-rr-square-minus"></i>
-              ) : (
-                <i className="fi fi-rr-square-plus"></i>
-              )}
-            </Button>
-            <span
-              onClick={() => table.getColumn('ItemName')?.toggleSorting()}
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            >
-              First Name
-              {table.getColumn('ItemName')?.getIsSorted() === 'asc' ? (
-                <ArrowUp size={16} className="ml-1" />
-              ) : table.getColumn('ItemName')?.getIsSorted() === 'desc' ? (
-                <ArrowDown size={16} className="ml-1" />
-              ) : null}
-            </span>
-          </div>
-        ),
-        cell: ({ row, getValue }) => (
-          <div
-            style={{ paddingLeft: `${row.depth * 2}rem` }}
-            className="d-flex align-items-center"
-          >
-            <IndeterminateCheckbox
-              checked={row.getIsSelected()}
-              indeterminate={row.getIsSomeSelected()}
-              onChange={row.getToggleSelectedHandler()}
-            />
-            {row.getCanExpand() ? (
-              <span
-                onClick={row.getToggleExpandedHandler()}
-                style={{ cursor: 'pointer' }}
-                className="d-inline-flex mx-3"
-              >
-                {row.getIsExpanded() ? (
-                  <i className="fi fi-rr-square-minus"></i>
-                ) : (
-                  <i className="fi fi-rr-square-plus"></i>
-                )}
-              </span>
-            ) : (
-              <span
-                className="bg-primary d-inline-block rounded-circle mx-2"
-                style={{ width: '0.5rem', height: '0.5rem' }}
-              ></span>
-            )}
-            {getValue<string>()}
-          </div>
-        ),
-        footer: (props) => props.column.id,
-        enableSorting: true,
-      },
-      {
-        accessorFn: (row) => row.lastName,
-        id: 'lastName',
-        cell: (info) => info.getValue(),
-        header: ({ column }) => (
-          <span
-            onClick={() => column.toggleSorting()}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            Last Name
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp size={16} className="ml-1" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown size={16} className="ml-1" />
-            ) : null}
-          </span>
-        ),
-        footer: (props) => props.column.id,
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'price',
-        header: ({ column }) => (
-          <span
-            onClick={() => column.toggleSorting()}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            Price
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp size={16} className="ml-1" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown size={16} className="ml-1" />
-            ) : null}
-          </span>
-        ),
-        footer: (props) => props.column.id,
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'visits',
-        header: ({ column }) => (
-          <span
-            onClick={() => column.toggleSorting()}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            Visits
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp size={16} className="ml-1" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown size={16} className="ml-1" />
-            ) : null}
-          </span>
-        ),
-        footer: (props) => props.column.id,
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'status',
-        header: ({ column }) => (
-          <span
-            onClick={() => column.toggleSorting()}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            Status
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp size={16} className="ml-1" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown size={16} className="ml-1" />
-            ) : null}
-          </span>
-        ),
-        footer: (props) => props.column.id,
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'progress',
-        header: ({ column }) => (
-          <span
-            onClick={() => column.toggleSorting()}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            Profile Progress
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp size={16} className="ml-1" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown size={16} className="ml-1" />
-            ) : null}
-          </span>
-        ),
-        footer: (props) => props.column.id,
-        enableSorting: true,
-      },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: ({ row }) => (
-          <div className="d-flex gap-2">
-            <Button
-              variant="success" // Changed from "warning" to "success" for green color
-              size="sm"
-              onClick={() => handleEditItem(row.original)}
-              title="Edit Item"
-            >
-              <Edit2 size={16} />
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => handleDeleteItem(row.original)}
-              title="Delete"
-            >
-              <Trash2 size={16} />
-            </Button>
-          </div>
-        ),
-        footer: (props) => props.column.id,
-        enableSorting: false,
-      },
-    ],
-    []
-  );
+const Menu: React.FC = () => {
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [showForm, setShowForm] = useState<boolean>(false);
 
-  const [data, setData] = useState(() => makeData(100, 5, 3));
-  const [expanded, setExpanded] = useState<ExpandedState>({});
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editItem, setEditItem] = useState<Person | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newItem, setNewItem] = useState<Partial<Person>>({
-    ItemName: '',
-    lastName: '',
-    price: 0,
-    visits: 0,
-    status: '✅ Acative',
-    progress: 0,
-  });
-  const [globalFilter, setGlobalFilter] = useState<string>('');
+  useEffect(() => {
+    fetchMenuItems();
+  }, []);
 
-  const table = useReactTable({
-    data,
-    columns,
-    state: { expanded, globalFilter, sorting },
-    onExpandedChange: setExpanded,
-    onGlobalFilterChange: setGlobalFilter,
-    onSortingChange: setSorting,
-    getSubRows: (row) => row.subRows,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    debugTable: true,
-  });
-
-  const handleDeleteItem = (item: Person) => {
-    setData((prevData) => prevData.filter((row) => row.userId !== item.userId));
-  };
-
-  const handleEditItem = (item: Person) => {
-    setEditItem(item);
-    setShowEditModal(true);
-  };
-
-  const handleUpdateItem = () => {
-    if (editItem) {
-      setData((prevData) =>
-        prevData.map((row) =>
-          row.userId === editItem.userId ? { ...row, ...editItem } : row
-        )
-      );
+  const fetchMenuItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getAllMenuItems();
+      setMenuItems(data);
+    } catch (err) {
+      setError('Failed to fetch menu items');
+      console.error('Error fetching menu items:', err);
+      const mockData = makeData(10);
+      setMenuItems(mockData.map(item => ({
+        menu_id: parseInt(item.userId),
+        menu_name: item.ItemName,
+        description: `Description for ${item.ItemName}`,
+        food_type: 'Veg',
+        categories_id: 1,
+        preparation_time: 15,
+        status: item.status,
+        variants: [{ variant_type: 'Regular', rate: item.price }],
+        addons: []
+      })));
+    } finally {
+      setLoading(false);
     }
-    setShowEditModal(false);
-    setEditItem(null);
   };
 
-  const handleAddItem = () => {
-    const newPerson: Person = {
-      userId: `new-${Date.now()}`,
-      ItemName: newItem.ItemName ?? '',
-      lastName: newItem.lastName ?? '',
-      price: newItem.price ?? 0,
-      visits: newItem.visits ?? 0,
-      status: newItem.status ?? '✅ Available',
-      progress: newItem.progress ?? 0,
-      subRows: [],
-    };
-    setData((prevData) => [newPerson, ...prevData]);
-    setNewItem({
-      ItemName: '',
-      lastName: '',
-      price: 0,
-      visits: 0,
-      status: '✅ Acative',
-      progress: 0,
-    });
-    setShowAddModal(false);
-  };
-
-  const renderPaginationItems = () => {
-    const currentPage = table.getState().pagination.pageIndex + 1;
-    const totalPages = Math.ceil(data.length / table.getState().pagination.pageSize);
-    const pageItems: JSX.Element[] = [];
-
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageItems.push(
-          <Pagination.Item
-            key={i}
-            active={i === currentPage}
-            onClick={() => table.setPageIndex(i - 1)}
-          >
-            {i}
-          </Pagination.Item>
-        );
-      }
-    } else {
-      pageItems.push(
-        <Pagination.Item
-          key={1}
-          active={1 === currentPage}
-          onClick={() => table.setPageIndex(0)}
-        >
-          1
-        </Pagination.Item>
-      );
-
-      if (currentPage > 2) {
-        pageItems.push(<Pagination.Ellipsis key="ellipsis-start" />);
-      }
-
-      for (
-        let i = Math.max(2, currentPage - 1);
-        i <= Math.min(currentPage + 1, totalPages - 1);
-        i++
-      ) {
-        pageItems.push(
-          <Pagination.Item
-            key={i}
-            active={i === currentPage}
-            onClick={() => table.setPageIndex(i - 1)}
-          >
-            {i}
-          </Pagination.Item>
-        );
-      }
-
-      if (currentPage < totalPages - 1) {
-        pageItems.push(<Pagination.Ellipsis key="ellipsis-end" />);
-      }
-
-      pageItems.push(
-        <Pagination.Item
-          key={totalPages}
-          active={totalPages === currentPage}
-          onClick={() => table.setPageIndex(totalPages - 1)}
-        >
-          {totalPages}
-        </Pagination.Item>
-      );
+  const handleCreateItem = async (itemData: MenuItem) => {
+    try {
+      setError(null);
+      const result = await createMenuItem(itemData);
+      setMenuItems(prev => [...prev, { ...itemData, menu_id: result.menu_id }]);
+      setShowForm(false);
+      setIsCreating(false);
+    } catch (err) {
+      setError('Failed to create menu item');
+      console.error('Error creating menu item:', err);
     }
-
-    return pageItems;
   };
+
+  const handleUpdateItem = async (id: number, itemData: MenuItem) => {
+    try {
+      setError(null);
+      await updateMenuItem(id, itemData);
+      setMenuItems(prev => prev.map(item => 
+        item.menu_id === id ? { ...itemData, menu_id: id } : item
+      ));
+      setEditingItem(null);
+      setShowForm(false);
+    } catch (err) {
+      setError('Failed to update menu item');
+      console.error('Error updating menu item:', err);
+    }
+  };
+
+  const handleDeleteItem = async (id: number) => {
+    try {
+      setError(null);
+      await deleteMenuItem(id);
+      setMenuItems(prev => prev.filter(item => item.menu_id !== id));
+    } catch (err) {
+      setError('Failed to delete menu item');
+      console.error('Error deleting menu item:', err);
+    }
+  };
+
+  const handleEditClick = (item: MenuItem) => {
+    setEditingItem(item);
+    setIsCreating(false);
+    setShowForm(true);
+  };
+
+  const handleCreateClick = () => {
+    setEditingItem(null);
+    setIsCreating(true);
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setEditingItem(null);
+    setIsCreating(false);
+    setShowForm(false);
+  };
+
+  if (loading) {
+    return <div className="loading">Loading menu items...</div>;
+  }
 
   return (
-    <div>
-      <Stack direction="horizontal" gap={2} className="p-4 justify-content-between align-items-center">
-        <Form.Control
-          type="text"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Search..."
-          style={{ width: '200px' }}
-        />
-        <div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            title="Add Item"
-            className="ml-auto"
-          >
-            <Plus size={16} />
-          </Button>
-        </div>
-      </Stack>
-
-      <div
-        style={{
-          maxHeight: 'calc(100vh - 200px)',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-        }}
-      >
-        <Table responsive className="mb-0">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id} colSpan={header.colSpan}>
-                    {header.isPlaceholder ? null : (
-                      <div>
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-        <Stack direction="horizontal" gap={2} className="p-4 justify-content-between">
-          <Select
-            value={{
-              label: table.getState().pagination.pageSize,
-              value: table.getState().pagination.pageSize,
-            }}
-            onChange={(selectedOption) => {
-              if (selectedOption && selectedOption.value) {
-                table.setPageSize(Number(selectedOption.value));
-              }
-            }}
-            options={[10, 20, 30, 40, 50].map((pageSize) => ({
-              label: pageSize,
-              value: pageSize,
-            }))}
-            classNamePrefix="select"
-            styles={{
-              control: (baseStyles) => ({
-                ...baseStyles,
-                width: '120px',
-              }),
-            }}
-          />
-          <Pagination>
-            <Pagination.Prev
-              onClick={() => table.setPageIndex(table.getState().pagination.pageIndex - 1)}
-              disabled={table.getState().pagination.pageIndex === 0}
-            />
-            {renderPaginationItems()}
-            <Pagination.Next
-              onClick={() => table.setPageIndex(table.getState().pagination.pageIndex + 1)}
-              disabled={
-                table.getState().pagination.pageIndex ===
-                Math.ceil(data.length / table.getState().pagination.pageSize) - 1
-              }
-            />
-          </Pagination>
-        </Stack>
+    <div className="menu-container">
+      <h1>Menu Management</h1>
+      
+      {error && <div className="error-message">{error}</div>}
+      
+      <div className="menu-actions">
+        <button 
+          className="btn btn-primary" 
+          onClick={handleCreateClick}
+        >
+          Add New Menu Item
+        </button>
+        <button 
+          className="btn btn-secondary" 
+          onClick={fetchMenuItems}
+        >
+          Refresh
+        </button>
       </div>
 
-      {/* Edit Item Modal */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Item</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {editItem && (
-            <Form>
-              <Form.Group className="mb-3" controlId="editItemName">
-                <Form.Label>Item Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={editItem.ItemName}
-                  onChange={(e) =>
-                    setEditItem({ ...editItem, ItemName: e.target.value })
-                  }
-                  placeholder="Enter item name"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3" controlId="editLastName">
-                <Form.Label>Last Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={editItem.lastName}
-                  onChange={(e) =>
-                    setEditItem({ ...editItem, lastName: e.target.value })
-                  }
-                  placeholder="Enter last name"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3" controlId="editPrice">
-                <Form.Label>Price</Form.Label>
-                <Form.Control
-                  type="number"
-                  value={editItem.price}
-                  onChange={(e) =>
-                    setEditItem({
-                      ...editItem,
-                      price: e.target.value ? parseInt(e.target.value) : 0,
-                    })
-                  }
-                  placeholder="Enter price"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3" controlId="editVisits">
-                <Form.Label>Visits</Form.Label>
-                <Form.Control
-                  type="number"
-                  value={editItem.visits}
-                  onChange={(e) =>
-                    setEditItem({
-                      ...editItem,
-                      visits: e.target.value ? parseInt(e.target.value) : 0,
-                    })
-                  }
-                  placeholder="Enter visits"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3" controlId="editStatus">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  value={editItem.status}
-                  onChange={(e) =>
-                    setEditItem({ ...editItem, status: e.target.value })
-                  }
-                >
-                  <option value="✅ Available">✅ Available</option>
-                  <option value="❌ Unavailable">❌ Unavailable</option>
-                  <option value="⏳ Pending">⏳ Pending</option>
-                </Form.Select>
-              </Form.Group>
-              <Form.Group className="mb-3" controlId="editProgress">
-                <Form.Label>Progress</Form.Label>
-                <Form.Control
-                  type="number"
-                  value={editItem.progress}
-                  onChange={(e) =>
-                    setEditItem({
-                      ...editItem,
-                      progress: e.target.value ? parseInt(e.target.value) : 0,
-                    })
-                  }
-                  placeholder="Enter progress"
-                />
-              </Form.Group>
-            </Form>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleUpdateItem}>
-            Update Item
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      {showForm && (
+        <MenuForm
+          item={editingItem}
+          isCreating={isCreating}
+          onSubmit={isCreating ? handleCreateItem : (data) => handleUpdateItem(editingItem!.menu_id!, data)}
+          onCancel={handleCancel}
+        />
+      )}
 
-      {/* Add Item Modal */}
-      <Modal show={showAddModal} onHide={() => setShowAddModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add Item</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3" controlId="addItemName">
-              <Form.Label>Item Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={newItem.ItemName}
-                onChange={(e) =>
-                  setNewItem({ ...newItem, ItemName: e.target.value })
-                }
-                placeholder="Enter item name"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="addLastName">
-              <Form.Label>Last Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={newItem.lastName}
-                onChange={(e) =>
-                  setNewItem({ ...newItem, lastName: e.target.value })
-                }
-                placeholder="Enter last name"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="addPrice">
-              <Form.Label>Price</Form.Label>
-              <Form.Control
-                type="number"
-                value={newItem.price}
-                onChange={(e) =>
-                  setNewItem({
-                    ...newItem,
-                    price: e.target.value ? parseInt(e.target.value) : 0,
-                  })
-                }
-                placeholder="Enter price"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="addVisits">
-              <Form.Label>Visits</Form.Label>
-              <Form.Control
-                type="number"
-                value={newItem.visits}
-                onChange={(e) =>
-                  setNewItem({
-                    ...newItem,
-                    visits: e.target.value ? parseInt(e.target.value) : 0,
-                  })
-                }
-                placeholder="Enter visits"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="addStatus">
-              <Form.Label>Status</Form.Label>
-              <Form.Select
-                value={newItem.status}
-                onChange={(e) =>
-                  setNewItem({ ...newItem, status: e.target.value })
-                }
-              >
-                <option value="✅ Acative"> Available</option>
-                <option value="❌ Unavailable">❌ Unavailable</option>
-                <option value="⏳ Pending">⏳ Pending</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="addProgress">
-              <Form.Label>Progress</Form.Label>
-              <Form.Control
-                type="number"
-                value={newItem.progress}
-                onChange={(e) =>
-                  setNewItem({
-                    ...newItem,
-                    progress: e.target.value ? parseInt(e.target.value) : 0,
-                  })
-                }
-                placeholder="Enter progress"
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAddModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleAddItem}>
-            Add Item
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <div className="menu-list">
+        <h2>Menu Items</h2>
+        {menuItems.length === 0 ? (
+          <p>No menu items found.</p>
+        ) : (
+          <table className="menu-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {menuItems.map(item => (
+                <tr key={item.menu_id}>
+                  <td>{item.menu_id}</td>
+                  <td>{item.menu_name}</td>
+                  <td>{item.description}</td>
+                  <td>{item.food_type}</td>
+                  <td>${item.variants[0]?.rate || 0}</td>
+                  <td>{item.status}</td>
+                  <td>
+                    <button 
+                      className="btn btn-edit"
+                      onClick={() => handleEditClick(item)}
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      className="btn btn-delete"
+                      onClick={() => handleDeleteItem(item.menu_id!)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 };
 
-function IndeterminateCheckbox({
-  indeterminate,
-  className = '',
-  ...rest
-}: { indeterminate?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
-  const ref = React.useRef<HTMLInputElement>(null);
+interface MenuFormProps {
+  item: MenuItem | null;
+  isCreating: boolean;
+  onSubmit: (data: MenuItem) => void;
+  onCancel: () => void;
+}
 
-  useEffect(() => {
-    if (typeof indeterminate === 'boolean' && ref.current) {
-      ref.current.indeterminate = !rest.checked && indeterminate;
-    }
-  }, [indeterminate, rest.checked]);
+const MenuForm: React.FC<MenuFormProps> = ({ item, isCreating, onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState<MenuItem>(item || {
+    menu_name: '',
+    description: '',
+    food_type: 'Veg',
+    categories_id: 1,
+    preparation_time: 15,
+    status: 'Active',
+    variants: [{ variant_type: 'Regular', rate: 0 }],
+    addons: []
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev: MenuItem) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleVariantChange = (index: number, field: string, value: string | number) => {
+    setFormData((prev: MenuItem) => ({
+      ...prev,
+      variants: prev.variants.map((variant: any, i: number) => 
+        i === index ? { ...variant, [field]: value } : variant
+      )
+    }));
+  };
 
   return (
-    <input
-      type="checkbox"
-      ref={ref}
-      className={`${className} form-check-input cursor-pointer`}
-      {...rest}
-    />
+    <div className="menu-form">
+      <h3>{isCreating ? 'Create New Menu Item' : 'Edit Menu Item'}</h3>
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>Menu Name:</label>
+          <input
+            type="text"
+            name="menu_name"
+            value={formData.menu_name}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Description:</label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Food Type:</label>
+          <select
+            name="food_type"
+            value={formData.food_type}
+            onChange={handleChange}
+          >
+            <option value="Veg">Vegetarian</option>
+            <option value="Non-Veg">Non-Vegetarian</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label>Preparation Time (minutes):</label>
+          <input
+            type="number"
+            name="preparation_time"
+            value={formData.preparation_time}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Status:</label>
+          <select
+            name="status"
+            value={formData.status}
+            onChange={handleChange}
+          >
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+
+        <h4>Variants</h4>
+        {formData.variants.map((variant: any, index: number) => (
+          <div key={index} className="variant-group">
+            <div className="form-group">
+              <label>Variant Type:</label>
+              <input
+                type="text"
+                value={variant.variant_type}
+                onChange={(e) => handleVariantChange(index, 'variant_type', e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Rate:</label>
+              <input
+                type="number"
+                step="0.01"
+                value={variant.rate}
+                onChange={(e) => handleVariantChange(index, 'rate', parseFloat(e.target.value))}
+                required
+              />
+            </div>
+          </div>
+        ))}
+
+        <div className="form-actions">
+          <button type="submit" className="btn btn-primary">
+            {isCreating ? 'Create' : 'Update'}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
   );
-}
+};
 
 export default Menu;

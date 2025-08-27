@@ -115,8 +115,7 @@ const categoriesRoutes = require('./routes/categoriesRoutes'); // ✅ fixed typo
 const unitMasterRoutes = require('./routes/unitMasterRoutes');
 const addonsRoutes = require('./routes/addonsRoutes');
 const menuMasterRoutes = require('./routes/menuMasterRoutes');
-const menuDetailsRoutes = require('./routes/menuDetailsRoutes');
-const menuAddonRoutes = require('./routes/menuAddonRoutes'); // ✅ naming fix
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -160,8 +159,7 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/units', unitMasterRoutes);
 app.use('/api/addons', addonsRoutes);
 app.use('/api/menumaster', menuMasterRoutes);
-app.use('/api/menudetails', menuDetailsRoutes);
-app.use('/api/menuaddons', menuAddonRoutes);
+
 
 // Basic route
 app.get("/", (req, res) => {
