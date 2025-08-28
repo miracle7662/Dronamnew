@@ -6,7 +6,6 @@ import PrivateRoute from './PrivateRoute'
 
 
 // Dashboards
-const Ecommerce = React.lazy(() => import('./../views/dashboards'))
 const Analytics = React.lazy(() => import('./../views/dashboards/Analytics'))
 const CRM = React.lazy(() => import('./../views/dashboards/CRM'))
 
@@ -20,6 +19,10 @@ const Calendar = React.lazy(() => import('./../views/apps/Calendar'))
 
 const HotelMasterPage = React.lazy(() => import('../views/apps/HotelMaster'))
 const HotelMasters = React.lazy(() => import('../views/apps/AddHotel'))
+const Menu = React.lazy(() => import('../components/Apps/Menu/Menu'))
+const MenuAddNew = React.lazy(() => import('../components/Apps/Menu/MenuAdd'))
+const MenuVariants = React.lazy(() => import('../components/Apps/Menu/MenuDetails'))
+const MenuAddons = React.lazy(() => import('../components/Apps/Menu/AddonDetails'))
 
 // Superadmin
 
@@ -32,14 +35,14 @@ const Country = React.lazy(() => import('./../views/apps/Country')) // Updated t
 const States = React.lazy(() => import('./../views/apps/States')) // Updated to use <States /> component
 const Districts = React.lazy(() => import('./../views/apps/Districts')) // Updated to use <Districts /> component
 const Zones = React.lazy(() => import('./../views/apps/Zones')) // Updated to use <Zones /> component
-const Catagories  = React.lazy(() => import('../components/commonMaster/Catagories'))
-const UnitMaster = React.lazy(() => import('../components/hotels/UnitMaster'))
-const AddonsMaster = React.lazy(() => import('../components/hotels/AddonsMaster'))
-const Menumaster = React.lazy(() => import('../components/hotels/Menumaster'))
-const MenuDetails = React.lazy(() => import('../components/hotels/MenuDetails'))
-const Menuaddon = React.lazy(() => import('../components/hotels/Menuaddon'))
+const Catagories  = React.lazy(() => import('../components/commonMaster/Catagories.jsx'))
+const UnitMaster = React.lazy(() => import('../components/hotels/UnitMaster.jsx'))
+const AddonsMaster = React.lazy(() => import('../components/hotels/AddonsMaster.jsx'))
+const Menumaster = React.lazy(() => import('../components/hotels/Menumaster.jsx'))
+const MenuDetails = React.lazy(() => import('../components/hotels/MenuDetails.jsx'))
+const Menuaddon = React.lazy(() => import('../components/hotels/Menuaddon.jsx'))
 //const ManageAgents = React.lazy(() => import('./../views/apps/ManageAgents')) // Added ManageAgents component
-const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgent')) // Corrected import to ManageAgent component
+const ManageAgents = React.lazy(() => import('../components/commonMaster/ManageAgent.jsx')) // Corrected import to ManageAgent component
 const City = React.lazy(() => import('../views/apps/City')) // Updated to use <City /> component
 // const ItemGroup = React.lazy(() => import('../views/apps/ItemGroup'))
 const GuestTypemaster = React.lazy(() => import('../views/apps/GuestTypemaster'))
@@ -52,12 +55,11 @@ const RoomMaster = React.lazy(()=>import('../views/apps/Roommaster'))
 const RoomCategoryMaster = React.lazy(() => import('../views/apps/Roomcategorymaster'))
 const GuestMaster = React.lazy(() => import('../views/apps/Guestmaster'))
 const FragmentMaster = React.lazy(() => import('../views/apps/Fragmentmaster')) 
-const BookMaster = React.lazy(() => import('../views/apps/BookMaster'))
+const BookMaster = React.lazy(() => import('../views/apps/Bookmaster'))
 const FeatureMaster = React.lazy(() => import('../views/apps/Featuremaster')) 
 // const KitchenGroup = React.lazy(() => import('../views/apps/KitchenGroup'))
 
 const CompanyMaster = React.lazy(() => import('../views/apps/Companymaster'))
-const AddHotel = React.lazy(() => import('../views/apps/AddHotel'))
 
 
 
@@ -379,15 +381,9 @@ const appsRoutes: RoutesProps = {
       route: PrivateRoute,
     },
     {
-      path: '/apps/HotelMaster',
-      name: 'Hotel Master',
-      element: <HotelMasterPage />,
-      route: PrivateRoute,
-    },
-    {
-      path: '/apps/AddHotel',
-      name: 'AddHotel ',
-      element: <HotelMasterPage />,
+      path: '/apps/Menu',
+      name: 'Menu Management',
+      element: <Menu />,
       route: PrivateRoute,
     },
     {

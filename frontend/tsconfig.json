@@ -21,6 +21,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "../Restaurant/src/components/Blockmaster"],
+  "include": ["src", "../Restaurant/src/components/Blockmaster", "src/types"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
