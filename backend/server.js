@@ -112,9 +112,11 @@ const superadminRoutes = require('./routes/superadminRoutes');
 const agentRoutes = require('./routes/agentRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
 const categoriesRoutes = require('./routes/categoriesRoutes'); // ✅ fixed typo
-const unitMasterRoutes = require('./routes/unitMasterRoutes');
+const unitMasterRoutes = require('./routes/UnitMasterRoutes');
 const addonsRoutes = require('./routes/addonsRoutes');
-const menuMasterRoutes = require('./routes/menuMasterRoutes');
+const menuMasterRoutes = require('./routes/menumasterRoutes');
+const menuDetailsRoutes = require('./routes/menuDetailsRoutes');
+const menuaddonRoutes = require('./routes/menuaddonRoutes');
 
 
 const app = express();
@@ -159,6 +161,8 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/units', unitMasterRoutes);
 app.use('/api/addons', addonsRoutes);
 app.use('/api/menumaster', menuMasterRoutes);
+app.use('/api/menudetails', menuDetailsRoutes);
+app.use('/api/menuaddons', menuaddonRoutes);
 
 
 // Basic route

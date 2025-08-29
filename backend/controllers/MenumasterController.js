@@ -1,312 +1,399 @@
-const { pool } = require('../config/database');
+const db = require('../config/database');
 
-// Get all menu items with their details and addons
-const getAllMenuItems = async (req, res) => {
-    try {
-        // Query to get all menu items with their details and addons
-        const query = `
-            SELECT 
-                m.menu_id,
-                m.menu_name,
-                m.description,
-                m.food_type,
-                m.categories_id,
-                m.preparation_time,
-                m.status,
-                m.created_by_id,
-                m.created_date,
-                m.updated_by_id,
-                m.updated_date,
-                md.menudetails_id,
-                md.variant_type,
-                md.rate,
-                ma.menuaddon_id,
-                ma.addon_id
-            FROM menumaster m
-            LEFT JOIN menu_details md ON m.menu_id = md.menu_id
-            LEFT JOIN menuaddon ma ON m.menu_id = ma.menu_id
-            ORDER BY m.menu_id, md.menudetails_id, ma.menuaddon_id
+// Create a new menu item
+exports.createMenu = async (req, res) => {
+  const {
+    menu_name,
+    description,
+    food_type,
+    categories_id,
+    Sub_categoryid,
+    Cuisine_Type,
+    Quantity_size,
+    preparation_time,
+    Tags,
+    Dish_Image,
+    status,
+    created_by_id,
+    updated_by_id
+  } = req.body;
+
+  try {
+    const query = `
+      INSERT INTO menumaster (
+        menu_name, description, food_type, categories_id, Sub_categoryid,
+        Cuisine_Type, Quantity_size, preparation_time, Tags, Dish_Image,
+        status, created_by_id, updated_by_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    const values = [
+      menu_name, description, food_type, categories_id, Sub_categoryid,
+      Cuisine_Type, Quantity_size, preparation_time, Tags, Dish_Image,
+      status, created_by_id, updated_by_id
+    ];
+
+    const [result] = await db.promise().query(query, values);
+    
+    // Also create menu details if provided
+    if (req.body.menuDetails && req.body.menuDetails.length > 0) {
+      for (const detail of req.body.menuDetails) {
+        const detailQuery = `
+          INSERT INTO menu_details (menu_id, variant_type, Price, Discount)
+          VALUES (?, ?, ?, ?)
         `;
-        
-        const [rows] = await pool.query(query);
-        
-        // Group the results by menu item
-        const menuItems = {};
-        rows.forEach(row => {
-            if (!menuItems[row.menu_id]) {
-                menuItems[row.menu_id] = {
-                    menu_id: row.menu_id,
-                    menu_name: row.menu_name,
-                    description: row.description,
-                    food_type: row.food_type,
-                    categories_id: row.categories_id,
-                    preparation_time: row.preparation_time,
-                    status: row.status,
-                    created_by_id: row.created_by_id,
-                    created_date: row.created_date,
-                    updated_by_id: row.updated_by_id,
-                    updated_date: row.updated_date,
-                    variants: [],
-                    addons: []
-                };
-            }
-            
-            // Add variant if it exists and not already added
-            if (row.menudetails_id && !menuItems[row.menu_id].variants.find(v => v.menudetails_id === row.menudetails_id)) {
-                menuItems[row.menu_id].variants.push({
-                    menudetails_id: row.menudetails_id,
-                    variant_type: row.variant_type,
-                    rate: row.rate
-                });
-            }
-            
-            // Add addon if it exists and not already added
-            if (row.menuaddon_id && !menuItems[row.menu_id].addons.find(a => a.menuaddon_id === row.menuaddon_id)) {
-                menuItems[row.menu_id].addons.push({
-                    menuaddon_id: row.menuaddon_id,
-                    addon_id: row.addon_id
-                });
-            }
-        });
-        
-        res.status(200).json(Object.values(menuItems));
-    } catch (error) {
-        console.error('Error fetching menu items:', error);
-        res.status(500).json({ error: error.message });
+        const detailValues = [
+          result.insertId,
+          detail.variant_type,
+          detail.Price,
+          detail.Discount
+        ];
+        await db.promise().query(detailQuery, detailValues);
+      }
     }
-};
 
-// Get single menu item by ID with details and addons
-const getMenuItemById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const query = `
-            SELECT 
-                m.menu_id,
-                m.menu_name,
-                m.description,
-                m.food_type,
-                m.categories_id,
-                m.preparation_time,
-                m.status,
-                m.created_by_id,
-                m.created_date,
-                m.updated_by_id,
-                m.updated_date,
-                md.menudetails_id,
-                md.variant_type,
-                md.rate,
-                ma.menuaddon_id,
-                ma.addon_id
-            FROM menumaster m
-            LEFT JOIN menu_details md ON m.menu_id = md.menu_id
-            LEFT JOIN menuaddon ma ON m.menu_id = ma.menu_id
-            WHERE m.menu_id = ?
-            ORDER BY md.menudetails_id, ma.menuaddon_id
+    // Also create menu addons if provided
+    if (req.body.menuAddons && req.body.menuAddons.length > 0) {
+      for (const addon of req.body.menuAddons) {
+        const addonQuery = `
+          INSERT INTO menu_addon (addon_id, menu_id, rate)
+          VALUES (?, ?, ?)
         `;
-        
-        const [rows] = await pool.query(query, [id]);
-        
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Menu item not found' });
-        }
-        
-        const menuItem = {
-            menu_id: rows[0].menu_id,
-            menu_name: rows[0].menu_name,
-            description: rows[0].description,
-            food_type: rows[0].food_type,
-            categories_id: rows[0].categories_id,
-            preparation_time: rows[0].preparation_time,
-            status: rows[0].status,
-            created_by_id: rows[0].created_by_id,
-            created_date: rows[0].created_date,
-            updated_by_id: rows[0].updated_by_id,
-            updated_date: rows[0].updated_date,
-            variants: [],
-            addons: []
-        };
-        
-        rows.forEach(row => {
-            // Add variant if it exists and not already added
-            if (row.menudetails_id && !menuItem.variants.find(v => v.menudetails_id === row.menudetails_id)) {
-                menuItem.variants.push({
-                    menudetails_id: row.menudetails_id,
-                    variant_type: row.variant_type,
-                    rate: row.rate
-                });
-            }
-            
-            // Add addon if it exists and not already added
-            if (row.menuaddon_id && !menuItem.addons.find(a => a.menuaddon_id === row.menuaddon_id)) {
-                menuItem.addons.push({
-                    menuaddon_id: row.menuaddon_id,
-                    addon_id: row.addon_id
-                });
-            }
-        });
-        
-        res.status(200).json(menuItem);
-    } catch (error) {
-        console.error('Error fetching menu item:', error);
-        res.status(500).json({ error: error.message });
+        const addonValues = [
+          addon.addon_id,
+          result.insertId,
+          addon.rate
+        ];
+        await db.promise().query(addonQuery, addonValues);
+      }
     }
+
+    res.status(201).json({
+      message: 'Menu created successfully',
+      menu_id: result.insertId
+    });
+  } catch (error) {
+    console.error('Error creating menu:', error);
+    res.status(500).json({ error: 'Failed to create menu' });
+  }
 };
 
-// Create new menu item with variants and addons
-const createMenuItem = async (req, res) => {
-    const connection = await pool.getConnection();
+// Get all menu items
+exports.getAllMenus = async (req, res) => {
+  try {
+    const query = 'SELECT * FROM menumaster';
+    const [rows] = await db.promise().query(query);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching menus:', error);
+    res.status(500).json({ error: 'Failed to fetch menus' });
+  }
+};
+
+// Get a menu item by ID
+exports.getMenuById = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Get menu master
+    const menuQuery = 'SELECT * FROM menumaster WHERE menu_id = ?';
+    const [menuRows] = await db.promise().query(menuQuery, [id]);
     
-    try {
-        await connection.beginTransaction();
-        
-        const {
-            menu_name,
-            description,
-            food_type,
-            categories_id,
-            preparation_time,
-            status,
-            created_by_id,
-            variants = [],
-            addons = []
-        } = req.body;
-        
-        // Insert into menumaster
-        const [menuResult] = await connection.query(
-            'INSERT INTO menumaster (menu_name, description, food_type, categories_id, preparation_time, status, created_by_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [menu_name, description, food_type, categories_id, preparation_time, status, created_by_id]
-        );
-        
-        const menuId = menuResult.insertId;
-        
-        // Insert variants into menu_details
-        for (const variant of variants) {
-            await connection.query(
-                'INSERT INTO menu_details (menu_id, variant_type, rate) VALUES (?, ?, ?)',
-                [menuId, variant.variant_type, variant.rate]
-            );
-        }
-        
-        // Insert addons into menuaddon
-        for (const addon of addons) {
-            await connection.query(
-                'INSERT INTO menuaddon (menu_id, addon_id) VALUES (?, ?)',
-                [menuId, addon.addon_id]
-            );
-        }
-        
-        await connection.commit();
-        
-        res.status(201).json({
-            message: 'Menu item created successfully',
-            menu_id: menuId
-        });
-    } catch (error) {
-        await connection.rollback();
-        console.error('Error creating menu item:', error);
-        res.status(500).json({ error: error.message });
-    } finally {
-        connection.release();
+    if (menuRows.length === 0) {
+      return res.status(404).json({ error: 'Menu not found' });
     }
-};
-
-// Update menu item with variants and addons
-const updateMenuItem = async (req, res) => {
-    const connection = await pool.getConnection();
     
-    try {
-        await connection.beginTransaction();
-        
-        const { id } = req.params;
-        const {
-            menu_name,
-            description,
-            food_type,
-            categories_id,
-            preparation_time,
-            status,
-            updated_by_id,
-            variants = [],
-            addons = []
-       } = req.body;
-        
-        // Update menumaster
-        await connection.query(
-            'UPDATE menumaster SET menu_name = ?, description = ?, food_type = ?, categories_id = ?, preparation_time = ?, status = ?, updated_by_id = ?, updated_date = CURRENT_TIMESTAMP WHERE menu_id = ?',
-            [menu_name, description, food_type, categories_id, preparation_time, status, updated_by_id, id]
-        );
-        
-        // Delete existing variants and addons
-        await connection.query('DELETE FROM menu_details WHERE menu_id = ?', [id]);
-        await connection.query('DELETE FROM menuaddon WHERE menu_id = ?', [id]);
-        
-        // Insert new variants
-        for (const variant of variants) {
-            await connection.query(
-                'INSERT INTO menu_details (menu_id, variant_type, rate) VALUES (?, ?, ?)',
-                [id, variant.variant_type, variant.rate]
-            );
-        }
-        
-        // Insert new addons
-        for (const addon of addons) {
-            await connection.query(
-                'INSERT INTO menuaddon (menu_id, addon_id) VALUES (?, ?)',
-                [id, addon.addon_id]
-            );
-        }
-        
-        await connection.commit();
-        
-        res.status(200).json({ message: 'Menu item updated successfully' });
-    } catch (error) {
-        await connection.rollback();
-        console.error('Error updating menu item:', error);
-        res.status(500).json({ error: error.message });
-    } finally {
-        connection.release();
-    }
-};
-
-// Delete menu item with all related data
-const deleteMenuItem = async (req, res) => {
-    const connection = await pool.getConnection();
+    const menu = menuRows[0];
     
-    try {
-        await connection.beginTransaction();
-        
-        const { id } = req.params;
-        
-        // Delete related records first (due to foreign key constraints)
-        await connection.query('DELETE FROM menu_details WHERE menu_id = ?', [id]);
-        await connection.query('DELETE FROM menuaddon WHERE menu_id = ?', [id]);
-        
-        // Delete the menu item
-        const [result] = await connection.query('DELETE FROM menumaster WHERE menu_id = ?', [id]);
-        
-        if (result.affectedRows === 0) {
-            await connection.rollback();
-            return res.status(404).json({ error: 'Menu item not found' });
-        }
-        
-        await connection.commit();
-        
-        res.status(200).json({ message: 'Menu item deleted successfully' });
-    } catch (error) {
-        await connection.rollback();
-        console.error('Error deleting menu item:', error);
-        res.status(500).json({ error: error.message });
-    } finally {
-        connection.release();
-    }
+    // Get menu details
+    const detailsQuery = 'SELECT * FROM menu_details WHERE menu_id = ?';
+    const [detailsRows] = await db.promise().query(detailsQuery, [id]);
+    menu.menuDetails = detailsRows;
+    
+    // Get menu addons
+    const addonsQuery = 'SELECT * FROM menu_addon WHERE menu_id = ?';
+    const [addonsRows] = await db.promise().query(addonsQuery, [id]);
+    menu.menuAddons = addonsRows;
+    
+    res.status(200).json(menu);
+  } catch (error) {
+    console.error('Error fetching menu:', error);
+    res.status(500).json({ error: 'Failed to fetch menu' });
+  }
 };
 
-module.exports = {
-    getAllMenuItems,
-    getMenuItemById,
-    createMenuItem,
-    updateMenuItem,
-    deleteMenuItem
+// Update a menu item
+exports.updateMenu = async (req, res) => {
+  const { id } = req.params;
+  const {
+    menu_name,
+    description,
+    food_type,
+    categories_id,
+    Sub_categoryid,
+    Cuisine_Type,
+    Quantity_size,
+    preparation_time,
+    Tags,
+    Dish_Image,
+    status,
+    updated_by_id
+  } = req.body;
+
+  try {
+    const query = `
+      UPDATE menumaster SET
+        menu_name = ?, description = ?, food_type = ?, categories_id = ?,
+        Sub_categoryid = ?, Cuisine_Type = ?, Quantity_size = ?,
+        preparation_time = ?, Tags = ?, Dish_Image = ?, status = ?,
+        updated_by_id = ?, updated_date = CURRENT_TIMESTAMP
+      WHERE menu_id = ?
+    `;
+    
+    const values = [
+      menu_name, description, food_type, categories_id, Sub_categoryid,
+      Cuisine_Type, Quantity_size, preparation_time, Tags, Dish_Image,
+      status, updated_by_id, id
+    ];
+
+    const [result] = await db.promise().query(query, values);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Menu not found' });
+    }
+    
+    // Update menu details if provided
+    if (req.body.menuDetails && req.body.menuDetails.length > 0) {
+      // First delete existing details
+      await db.promise().query('DELETE FROM menu_details WHERE menu_id = ?', [id]);
+      
+      // Then insert new details
+      for (const detail of req.body.menuDetails) {
+        const detailQuery = `
+          INSERT INTO menu_details (menu_id, variant_type, Price, Discount)
+          VALUES (?, ?, ?, ?)
+        `;
+        const detailValues = [
+          id,
+          detail.variant_type,
+          detail.Price,
+          detail.Discount
+        ];
+        await db.promise().query(detailQuery, detailValues);
+      }
+    }
+
+    // Update menu addons if provided
+    if (req.body.menuAddons && req.body.menuAddons.length > 0) {
+      // First delete existing addons
+      await db.promise().query('DELETE FROM menu_addon WHERE menu_id = ?', [id]);
+      
+      // Then insert new addons
+      for (const addon of req.body.menuAddons) {
+        const addonQuery = `
+          INSERT INTO menu_addon (addon_id, menu_id, rate)
+          VALUES (?, ?, ?)
+        `;
+        const addonValues = [
+          addon.addon_id,
+          id,
+          addon.rate
+        ];
+        await db.promise().query(addonQuery, addonValues);
+      }
+    }
+
+    res.status(200).json({ message: 'Menu updated successfully' });
+  } catch (error) {
+    console.error('Error updating menu:', error);
+    res.status(500).json({ error: 'Failed to update menu' });
+  }
+};
+
+// Delete a menu item
+exports.deleteMenu = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Delete related menu details
+    await db.promise().query('DELETE FROM menu_details WHERE menu_id = ?', [id]);
+    
+    // Delete related menu addons
+    await db.promise().query('DELETE FROM menu_addon WHERE menu_id = ?', [id]);
+    
+    // Delete the menu
+    const query = 'DELETE FROM menumaster WHERE menu_id = ?';
+    const [result] = await db.promise().query(query, [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Menu not found' });
+    }
+    
+    res.status(200).json({ message: 'Menu deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting menu:', error);
+    res.status(500).json({ error: 'Failed to delete menu' });
+  }
+};
+
+// Create a menu detail
+exports.createMenuDetail = async (req, res) => {
+  const { menu_id, variant_type, Price, Discount } = req.body;
+  
+  try {
+    const query = `
+      INSERT INTO menu_details (menu_id, variant_type, Price, Discount)
+      VALUES (?, ?, ?, ?)
+    `;
+    
+    const values = [menu_id, variant_type, Price, Discount];
+    const [result] = await db.promise().query(query, values);
+    
+    res.status(201).json({
+      message: 'Menu detail created successfully',
+      menudetails_id: result.insertId
+    });
+  } catch (error) {
+    console.error('Error creating menu detail:', error);
+    res.status(500).json({ error: 'Failed to create menu detail' });
+  }
+};
+
+// Get all menu details for a menu
+exports.getMenuDetails = async (req, res) => {
+  const { menuId } = req.params;
+  
+  try {
+    const query = 'SELECT * FROM menu_details WHERE menu_id = ?';
+    const [rows] = await db.promise().query(query, [menuId]);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching menu details:', error);
+    res.status(500).json({ error: 'Failed to fetch menu details' });
+  }
+};
+
+// Update a menu detail
+exports.updateMenuDetail = async (req, res) => {
+  const { id } = req.params;
+  const { variant_type, Price, Discount } = req.body;
+  
+  try {
+    const query = `
+      UPDATE menu_details SET variant_type = ?, Price = ?, Discount = ?
+      WHERE menudetails_id = ?
+    `;
+    
+    const values = [variant_type, Price, Discount, id];
+    const [result] = await db.promise().query(query, values);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Menu detail not found' });
+    }
+    
+    res.status(200).json({ message: 'Menu detail updated successfully' });
+  } catch (error) {
+    console.error('Error updating menu detail:', error);
+    res.status(500).json({ error: 'Failed to update menu detail' });
+  }
+};
+
+// Delete a menu detail
+exports.deleteMenuDetail = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const query = 'DELETE FROM menu_details WHERE menudetails_id = ?';
+    const [result] = await db.promise().query(query, [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Menu detail not found' });
+    }
+    
+    res.status(200).json({ message: 'Menu detail deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting menu detail:', error);
+    res.status(500).json({ error: 'Failed to delete menu detail' });
+  }
+};
+
+// Create a menu addon
+exports.createMenuAddon = async (req, res) => {
+  const { addon_id, menu_id, rate } = req.body;
+  
+  try {
+    const query = `
+      INSERT INTO menu_addon (addon_id, menu_id, rate)
+      VALUES (?, ?, ?)
+    `;
+    
+    const values = [addon_id, menu_id, rate];
+    const [result] = await db.promise().query(query, values);
+    
+    res.status(201).json({
+      message: 'Menu addon created successfully',
+      menu_addon: result.insertId
+    });
+  } catch (error) {
+    console.error('Error creating menu addon:', error);
+    res.status(500).json({ error: 'Failed to create menu addon' });
+  }
+};
+
+// Get all menu addons for a menu
+exports.getMenuAddons = async (req, res) => {
+  const { menuId } = req.params;
+  
+  try {
+    const query = 'SELECT * FROM menu_addon WHERE menu_id = ?';
+    const [rows] = await db.promise().query(query, [menuId]);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching menu addons:', error);
+    res.status(500).json({ error: 'Failed to fetch menu addons' });
+  }
+};
+
+// Update a menu addon
+exports.updateMenuAddon = async (req, res) => {
+  const { id } = req.params;
+  const { addon_id, menu_id, rate } = req.body;
+  
+  try {
+    const query = `
+      UPDATE menu_addon SET addon_id = ?, menu_id = ?, rate = ?
+      WHERE menu_addon = ?
+    `;
+    
+    const values = [addon_id, menu_id, rate, id];
+    const [result] = await db.promise().query(query, values);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Menu addon not found' });
+    }
+    
+    res.status(200).json({ message: 'Menu addon updated successfully' });
+  } catch (error) {
+    console.error('Error updating menu addon:', error);
+    res.status(500).json({ error: 'Failed to update menu addon' });
+  }
+};
+
+// Delete a menu addon
+exports.deleteMenuAddon = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const query = 'DELETE FROM menu_addon WHERE menu_addon = ?';
+    const [result] = await db.promise().query(query, [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Menu addon not found' });
+    }
+    
+    res.status(200).json({ message: 'Menu addon deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting menu addon:', error);
+    res.status(500).json({ error: 'Failed to delete menu addon' });
+  }
 };

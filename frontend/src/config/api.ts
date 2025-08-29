@@ -47,6 +47,40 @@ const API_CONFIG = {
       UPDATE: (id: string) => `/zones/${id}`,
       DELETE: (id: string) => `/zones/${id}`,
     },
+    
+    // Menu
+    MENUS: {
+      GET_ALL: '/menumaster/menus',
+      GET_BY_ID: (id: string) => `/menumaster/menu/${id}`,
+      CREATE: '/menumaster/menu',
+      UPDATE: (id: string) => `/menumaster/menu/${id}`,
+      DELETE: (id: string) => `/menumaster/menu/${id}`,
+    },
+    
+    // Menu Details
+    MENU_DETAILS: {
+      GET_BY_MENU_ID: (menuId: string) => `/menumaster/menu-details/${menuId}`,
+      CREATE: '/menumaster/menu-detail',
+      UPDATE: (id: string) => `/menumaster/menu-detail/${id}`,
+      DELETE: (id: string) => `/menumaster/menu-detail/${id}`,
+    },
+    
+    // Menu Addons
+    MENU_ADDONS: {
+      GET_BY_MENU_ID: (menuId: string) => `/menumaster/menu-addons/${menuId}`,
+      CREATE: '/menumaster/menu-addon',
+      UPDATE: (id: string) => `/menumaster/menu-addon/${id}`,
+      DELETE: (id: string) => `/menumaster/menu-addon/${id}`,
+    },
+    
+    // Addons
+    ADDONS: {
+      GET_ALL: '/addons',
+      GET_BY_ID: (id: string) => `/addons/${id}`,
+      CREATE: '/addons',
+      UPDATE: (id: string) => `/addons/${id}`,
+      DELETE: (id: string) => `/addons/${id}`,
+    },
   };
   
   export default API_CONFIG;
